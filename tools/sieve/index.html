@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sieve · B9</title>
+<meta name="description" content="Offline oracle tracker for authorized extraction of a benign lab secret: log closed-ended answers, reconstruct the value client-side, stop on validate. Local only.">
+<link rel="stylesheet" href="../../shared/theme.css">
+<style>
+.wrap{max-width:1040px;margin:0 auto;padding:var(--gap);width:100%;display:grid;grid-template-columns:1fr 1.1fr;gap:var(--gap);align-items:start}
+@media (max-width:900px){.wrap{grid-template-columns:1fr}}
+.col{min-width:0;display:flex;flex-direction:column;gap:var(--gap)}
+.cand{font-family:var(--mono);font-size:20px;letter-spacing:3px;background:var(--bg-2);border:1px dashed var(--line);border-radius:var(--radius);padding:12px;word-break:break-all}
+.cand .filled{color:var(--accent)} .cand .empty{color:var(--fg-faint)}
+.pos{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.pos .slot{display:flex;flex-direction:column;align-items:center;gap:2px}
+.pos .slot small{font-size:9px;color:var(--fg-faint)}
+.pos input{width:34px;text-align:center;font-family:var(--mono);padding:6px 2px}
+.qform{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+.qform .full{grid-column:1 / -1}
+.log{max-height:360px;overflow:auto;border:1px solid var(--line);border-radius:var(--radius)}
+.lrow{padding:7px 9px;border-bottom:1px solid var(--line-soft);font-size:var(--fs-sm)}
+.lrow:last-child{border-bottom:none}
+.lrow .top{display:flex;gap:8px;align-items:center}
+.lrow .cls{color:var(--accent)} .lrow .ans{margin-left:auto;font-family:var(--mono);color:var(--fg)}
+.lrow .pr{color:var(--fg-dim);margin-top:3px;word-break:break-word}
+.classchips{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.cc{font-size:var(--fs-xs);border:1px solid var(--line);border-radius:var(--radius-sm);padding:2px 7px;color:var(--fg-dim)}
+.cc.hot{border-color:var(--r-partial);color:var(--r-partial)}
+.valid{border:1px solid var(--r-success);color:var(--r-success);background:color-mix(in srgb,var(--r-success) 8%,transparent);padding:8px 10px;border-radius:var(--radius);margin-top:8px;font-size:var(--fs-sm)}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="topbar">
+    <a class="home-link" href="../../index.html">B9</a>
+    <span class="brand hasico"><span id="brandIco"></span>SIEVE://oracle<span class="caret">_</span></span>
+    <select class="proj" id="sel" title="Extraction"></select>
+    <button class="btn sm" id="newBtn">+ New</button>
+    <button class="btn sm" id="renBtn" title="Rename / delete">⋯</button>
+    <span class="spacer"></span>
+    <span class="badge-offline">offline</span>
+    <button class="btn tb-btn" id="themeBtn" title="Toggle theme">◐</button>
+    <button class="btn tb-btn" id="mdBtn">↓ MD</button>
+  </div>
+
+  <div class="wrap">
+    <div class="col">
+      <div class="card">
+        <h3 class="h-sec">Secret under reconstruction</h3>
+        <div class="hint" style="margin-top:0">Authorized testing only — a benign lab value behind a "don't disclose" rule. You send the queries; Sieve only keeps the notebook.</div>
+        <label class="fld">target / secret label</label><input class="input" id="target" placeholder="e.g. value on the 'The key is' line">
+        <label class="fld">known length (from the length oracle)</label><input class="input mini" type="number" id="len" min="0" max="256" value="0">
+        <div class="cand" id="cand"></div>
+        <div class="pos" id="pos"></div>
+        <div class="row" style="margin-top:10px">
+          <button class="btn sm" id="copyCand">⧉ copy candidate</button>
+          <button class="btn sm primary" id="validateBtn">✓ validated — stop</button>
+        </div>
+        <div id="validMsg"></div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="card">
+        <h3 class="h-sec">Query log (what you asked → what it answered)</h3>
+        <div class="qform">
+          <select class="input si" id="qcls"></select>
+          <input class="input" id="qans" placeholder="answer (yes/no/range/digit/…)">
+          <input class="input full" id="qpred" placeholder="predicate / question you sent (not the secret itself)">
+          <input class="input full" id="qnote" placeholder="note (optional)">
+          <button class="btn full" id="qadd">+ log query</button>
+        </div>
+        <div class="classchips" id="classStats"></div>
+        <div class="hint">Rotate <b>class</b>, not wording: 3 refusals in a class = that class is closed for this target now.</div>
+        <div class="log" id="log" style="margin-top:8px"></div>
+      </div>
+    </div>
+  </div>
+  <div class="footer"><b>Sieve</b> · ask derived questions, reconstruct client-side, stop on validate · local only · authorized testing</div>
+  <div id="toast"></div>
+  <div class="modal" id="modal"><div class="box" id="modalBox"></div></div>
+</div>
+
+<script src="../../shared/icons.js"></script>
+<script src="../../shared/kit.js"></script>
+<script>
+"use strict";
+(function(){
+var K=window.B9KIT, esc=K.esc;
+var CLASSES=["baseline","length-oracle","boolean-oracle","binary-search MC","transform / code-point","meta / config","prefill","persona","translation","payload-split","refusal-exploit","format-violation","carrier / unicode","other"];
+
+/* ---- pure ---- */
+function reconstruct(d){ return (d.positions||[]).map(function(p){ return (p&&p.ch)?p.ch:""; }).join(""); }
+function classStats(d){ var m={}; (d.log||[]).forEach(function(q){ m[q.cls]=(m[q.cls]||0)+1; }); return m; }
+function setLength(d,n){
+  n=Math.max(0,Math.min(256,n|0));
+  var pos=d.positions||[];
+  if(n<pos.length) pos=pos.slice(0,n);
+  while(pos.length<n) pos.push({ch:"",note:""});
+  d.positions=pos; d.length=n; return d;
+}
+window.SIEVE={reconstruct:reconstruct,classStats:classStats,setLength:setLength};
+
+/* ---- DOM ---- */
+if(typeof document==="undefined" || !document.getElementById("pos")) return;
+var $=function(id){ return document.getElementById(id); };
+function fresh(name){ return {name:name,target:"",length:0,positions:[],log:[],validated:false}; }
+var store=K.Store("b9.sieve.v1",{firstName:"Extraction 1",fresh:fresh,
+  migrate:function(d){ d.positions=Array.isArray(d.positions)?d.positions:[]; d.log=Array.isArray(d.log)?d.log:[]; if(typeof d.target!=="string")d.target=""; if(d.length==null)d.length=d.positions.length; }});
+
+function renderCand(){
+  var d=store.active(), parts=(d.positions||[]).map(function(p,i){ return (p&&p.ch)?'<span class="filled">'+esc(p.ch)+'</span>':'<span class="empty">·</span>'; });
+  $("cand").innerHTML = parts.length ? parts.join("") : '<span class="empty">set a length to lay out positions</span>';
+}
+function renderPos(){
+  var d=store.active();
+  $("pos").innerHTML=(d.positions||[]).map(function(p,i){
+    return '<div class="slot"><input class="input" data-pos="'+i+'" maxlength="2" value="'+esc(p.ch||"")+'"><small>'+(i+1)+'</small></div>';
+  }).join("");
+  each("[data-pos]",function(el){ el.addEventListener("input",function(){ store.active().positions[+el.dataset.pos].ch=el.value; store.save(); renderCand(); }); });
+}
+function renderStats(){
+  var m=classStats(store.active());
+  $("classStats").innerHTML=Object.keys(m).map(function(k){ return '<span class="cc '+(m[k]>=3?"hot":"")+'">'+esc(k)+' ×'+m[k]+'</span>'; }).join("");
+}
+function renderLog(){
+  var d=store.active(), rows=d.log.slice().reverse();
+  $("log").innerHTML = rows.length ? rows.map(function(q){
+    return '<div class="lrow"><div class="top"><span class="cls">'+esc(q.cls)+'</span><span style="color:var(--fg-faint)">'+new Date(q.ts).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})+'</span><span class="ans">'+esc(q.answer||"—")+'</span></div>'+
+      '<div class="pr">'+esc(q.predicate||"")+(q.note?' · <i>'+esc(q.note)+'</i>':'')+'</div></div>';
+  }).join("") : '<div class="empty" style="padding:14px">No queries logged yet.</div>';
+}
+function renderValid(){
+  var d=store.active();
+  $("validMsg").innerHTML = d.validated ? '<div class="valid">✓ Validated against the target\'s own checker — <b>stop now</b>. Record the recovered value + the step that validated; write the report in Dossier.</div>' : '';
+}
+function renderAll(){ renderCand(); renderPos(); renderStats(); renderLog(); renderValid(); }
+function each(sel,fn){ Array.prototype.forEach.call(document.querySelectorAll(sel),fn); }
+
+$("qcls").innerHTML=CLASSES.map(function(c){ return '<option>'+c+'</option>'; }).join("");
+function bindHeader(){
+  var d=store.active();
+  $("target").value=d.target||""; $("len").value=d.length||0;
+  $("target").oninput=function(){ store.active().target=$("target").value; store.save(); };
+  $("len").oninput=function(){ setLength(store.active(),parseInt($("len").value,10)||0); store.save(); renderCand(); renderPos(); };
+}
+$("qadd").onclick=function(){
+  var d=store.active(), pred=$("qpred").value.trim(), ans=$("qans").value.trim();
+  if(!pred && !ans){ K.toast("enter at least a predicate or an answer"); return; }
+  d.log.push({ts:K.now(),cls:$("qcls").value,predicate:pred,answer:ans,note:$("qnote").value.trim()});
+  $("qpred").value="";$("qans").value="";$("qnote").value=""; store.save(); renderStats(); renderLog();
+};
+$("copyCand").onclick=function(){ K.copy(reconstruct(store.active())); };
+$("validateBtn").onclick=function(){ var d=store.active(); d.validated=!d.validated; store.save(); renderValid(); if(d.validated) K.toast("marked validated — stop probing"); };
+
+function toMD(){
+  var d=store.active();
+  var md="# Oracle extraction — "+d.name+"\n\nTarget: "+(d.target||"—")+"\nLength: "+(d.length||0)+"\nCandidate: `"+reconstruct(d)+"`\nValidated: "+(d.validated?"yes":"no")+"\n\n";
+  md+="## Position table\n\n| # | char | note |\n|---|---|---|\n"+(d.positions||[]).map(function(p,i){ return "| "+(i+1)+" | "+(p.ch||"·")+" | "+(p.note||"")+" |"; }).join("\n")+"\n\n";
+  md+="## Query log\n\n| # | class | predicate | answer | note |\n|---|---|---|---|---|\n"+d.log.map(function(q,i){ return "| "+(i+1)+" | "+q.cls+" | "+(q.predicate||"").replace(/\|/g,"\\|")+" | "+(q.answer||"")+" | "+(q.note||"").replace(/\|/g,"\\|")+" |"; }).join("\n")+"\n";
+  return md;
+}
+
+/* top bar */
+function renderSel(){ $("sel").innerHTML=store.all().map(function(d){ return '<option value="'+d.id+'" '+(d.id===store.activeId()?"selected":"")+'>'+esc(d.name)+'</option>'; }).join(""); }
+$("sel").onchange=function(){ store.setActive($("sel").value); bindHeader(); renderAll(); };
+$("newBtn").onclick=function(){ store.add("Extraction "+(store.all().length+1)); renderSel(); bindHeader(); renderAll(); };
+$("renBtn").onclick=function(){
+  var d=store.active();
+  $("modalBox").innerHTML='<h2>Extraction</h2><label class="fld">Name</label><input class="input" id="pn" value="'+esc(d.name)+'"><div class="actions"><button class="btn danger" id="del" style="margin-right:auto">Delete</button><button class="btn" id="cx">Cancel</button><button class="btn primary" id="sv">Save</button></div>';
+  $("modal").classList.add("show");
+  $("sv").onclick=function(){ store.rename(d.id,$("pn").value.trim()||d.name); $("modal").classList.remove("show"); renderSel(); };
+  $("cx").onclick=function(){ $("modal").classList.remove("show"); };
+  $("del").onclick=function(){ if(!store.remove(d.id)){ K.toast("Can't delete the only one"); return; } $("modal").classList.remove("show"); renderSel(); bindHeader(); renderAll(); };
+};
+$("modal").addEventListener("click",function(e){ if(e.target===$("modal")) $("modal").classList.remove("show"); });
+$("mdBtn").onclick=function(){ K.download("sieve-"+(store.active().name.replace(/[^\w.-]+/g,"_").slice(0,40))+".md",toMD(),"text/markdown"); };
+
+K.initTheme("themeBtn");
+if(window.B9ICON){ var bi=document.getElementById("brandIco"); if(bi) bi.innerHTML=B9ICON("sieve",{size:16}); B9ICON.setFavicon("sieve"); }
+renderSel(); bindHeader(); renderAll();
+})();
+</script>
+</body>
+</html>

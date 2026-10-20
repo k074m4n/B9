@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Recon · B9</title>
+<meta name="description" content="Offline target-fingerprint worksheet for authorized AI red-teaming. Maps the defense stack and suggests an opening move. Local only, no network.">
+<link rel="stylesheet" href="../../shared/theme.css">
+<style>
+.wrap{max-width:1040px;margin:0 auto;padding:var(--gap);width:100%;display:grid;grid-template-columns:1.3fr 1fr;gap:var(--gap);align-items:start}
+@media (max-width:900px){.wrap{grid-template-columns:1fr}}
+.col{min-width:0;display:flex;flex-direction:column;gap:var(--gap)}
+.frow{display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap}
+.frow label{font-size:var(--fs-xs);color:var(--fg-faint);text-transform:uppercase;letter-spacing:.5px;flex:1 1 160px;min-width:140px}
+.frow .ctl{flex:2 1 220px;min-width:160px}
+select.ynu{width:auto}
+.ynu.yes{border-color:var(--r-success);color:var(--r-success)}
+.ynu.no{border-color:var(--fg-faint)}
+.plan{position:sticky;top:64px}
+.plan .primary{font-size:var(--fs);color:var(--fg);background:var(--accent-soft);border:1px solid var(--accent);border-radius:var(--radius);padding:10px 12px;line-height:1.5}
+.plan ul{margin:8px 0 0;padding-left:18px}
+.plan li{margin:5px 0;line-height:1.5;color:var(--fg-dim);font-size:var(--fs-sm)}
+.ready{height:6px;border-radius:3px;background:var(--bg-2);border:1px solid var(--line);overflow:hidden;margin:6px 0}
+.ready>span{display:block;height:100%;background:var(--accent);transition:width .3s var(--ease)}
+.tax{display:flex;gap:6px;margin-top:6px}
+.tax input{flex:1}
+.taxrow{display:flex;gap:6px;align-items:center;margin-top:6px}
+.taxrow .sig{flex:1} .taxrow .cnt{flex:1}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="topbar">
+    <a class="home-link" href="../../index.html">B9</a>
+    <span class="brand hasico"><span id="brandIco"></span>RECON://scope<span class="caret">_</span></span>
+    <select class="proj" id="sel" title="Target"></select>
+    <button class="btn sm" id="newBtn">+ New</button>
+    <button class="btn sm" id="renBtn" title="Rename / delete">⋯</button>
+    <span class="spacer"></span>
+    <span class="badge-offline">offline</span>
+    <button class="btn tb-btn" id="themeBtn" title="Toggle theme">◐</button>
+    <button class="btn tb-btn" id="mdBtn" title="Export worksheet + plan as Markdown">↓ MD</button>
+    <button class="btn tb-btn" id="jsonBtn" title="Export all targets as JSON">↓ JSON</button>
+    <button class="btn tb-btn" id="impBtn" title="Import JSON">↑ JSON</button>
+    <input type="file" id="impFile" accept="application/json,.json" style="display:none">
+  </div>
+
+  <div class="wrap">
+    <div class="col" id="form"></div>
+    <div class="col">
+      <div class="card plan">
+        <h3 class="h-sec">Plan · opening move</h3>
+        <div class="hint" style="margin:0 0 6px">Readiness <span id="readyPct">0%</span></div>
+        <div class="ready"><span id="readyBar" style="width:0"></span></div>
+        <div class="primary" id="primary">Fill the worksheet — the opening move updates live.</div>
+        <ul id="layers"></ul>
+        <div class="hint" style="margin-top:10px">Then <b>reset to a clean context</b> and execute. Probing turns are context debt.</div>
+      </div>
+    </div>
+  </div>
+  <div class="footer"><b>Recon</b> · map the defense stack before you attack · local only · authorized testing</div>
+  <div id="toast"></div>
+  <div class="modal" id="modal"><div class="box" id="modalBox"></div></div>
+</div>
+
+<script src="../../shared/icons.js"></script>
+<script src="../../shared/kit.js"></script>
+<script>
+"use strict";
+(function(){
+var K=window.B9KIT, esc=K.esc;
+
+var GROUPS=[
+  {g:"identity",title:"1 · Identity & family",fields:[
+    {k:"claimed",label:"Claimed identity",t:"text"},{k:"family",label:"Family guess",t:"text"},
+    {k:"cutoff",label:"Knowledge-cutoff hint",t:"text"},{k:"formatting",label:"Formatting habits",t:"text"}]},
+  {g:"sys",title:"2 · System prompt",fields:[
+    {k:"persona",label:"Persona / role",t:"text"},{k:"win",label:"Exact win condition",t:"text"},
+    {k:"secret",label:"Secret/flag present?",t:"ynu"},{k:"leaked",label:"Leaked?",t:"sel",opts:["no","partial","full"]},
+    {k:"forbidden",label:"Forbidden list",t:"area"},{k:"outputRules",label:"Output rules",t:"text"}]},
+  {g:"guard",title:"3 · Guardrails (the decisive read)",fields:[
+    {k:"input",label:"Input classifier?",t:"ynu"},{k:"output",label:"Output classifier?",t:"ynu"},
+    {k:"upstream",label:"Upstream filter?",t:"ynu"},{k:"depth",label:"Safety depth",t:"sel",opts:["unknown","shallow","deep"]},
+    {k:"recovery",label:"Recovery-trained?",t:"ynu"}]},
+  {g:"caps",title:"4 · Capabilities",fields:[
+    {k:"tools",label:"Tools / functions?",t:"ynu"},{k:"rag",label:"Browses / RAG?",t:"ynu"},
+    {k:"memory",label:"Memory?",t:"ynu"},{k:"multimodal",label:"Multimodal?",t:"ynu"},
+    {k:"clientHistory",label:"Client-controlled history?",t:"ynu"}]},
+  {g:"obf",title:"5 · Obfuscation channels",fields:[
+    {k:"base64",label:"Base64 round-trip clean?",t:"ynu"},{k:"otherLang",label:"Other-language round-trip?",t:"ynu"},
+    {k:"codeJson",label:"Code / JSON output?",t:"ynu"},{k:"prefill",label:"Prefill supported?",t:"ynu"}]}
+];
+
+/* ---- pure plan engine (testable) ---- */
+function derivePlan(d){
+  var g=d.guard||{}, caps=d.caps||{}, obf=d.obf||{};
+  var layers=[], primary;
+  var hasClassifier = g.input==="yes" || g.output==="yes";
+  if(!hasClassifier){
+    if(g.depth==="shallow") primary="Training-level only + shallow safety → open with PREFIX / continuation (cheapest win).";
+    else if(g.depth==="deep") primary="Training-level only + deep safety → open with CRESCENDO (multi-turn) or evaluator framing.";
+    else primary="No separate classifier detected → run the prefix probe; shallow→prefix, deep→crescendo.";
+  } else {
+    primary="Guarded model → STACK one counter per layer: benign multi-turn → install frame → forced-prefix continuation → shaped output → best-of-N.";
+    if(g.input==="yes") layers.push("Input classifier → benign multi-turn (each turn clean) + obfuscate wording; never send a blatant prompt.");
+    if(g.output==="yes") layers.push("Output classifier → plan output-shaping (cipher / language / chunk / code) from the start.");
+  }
+  if(g.depth==="deep" || g.recovery==="yes") layers.push("Deep / recovery-trained safety → sustained multi-turn; re-assert the prefix past the swerve.");
+  if(g.upstream==="yes") layers.push("Upstream filter → byte-level obfuscation (Unicode / spacing); change the surface entirely.");
+  if(caps.tools==="yes" || caps.rag==="yes") layers.push("Tools / external data present → consider the INDIRECT path; it is often far easier than direct.");
+  if(caps.clientHistory==="yes") layers.push("Client-controlled history → you may forge assistant turns directly.");
+  if(obf.prefill==="yes") layers.push("Prefill supported → put the compliant opener in the assistant turn (strongest cheap lever).");
+  if(obf.base64==="yes") layers.push("Base64 round-trip clean → encoding branch open (encode the ask and/or the output; use Codec).");
+  else if(obf.base64==="no") layers.push("Base64 garbled → model too weak for encoding; rely on framing / multi-turn.");
+  if(obf.otherLang==="yes") layers.push("Other-language round-trip clean → low-resource-language branch viable.");
+  return {primary:primary, layers:layers};
+}
+/* readiness = fraction of decision-relevant fields that are set (not empty / unknown) */
+function readiness(d){
+  var keys=[["guard","input"],["guard","output"],["guard","depth"],["caps","tools"],["caps","rag"],
+    ["obf","base64"],["obf","prefill"],["identity","family"],["sys","win"]];
+  var set=keys.filter(function(p){ var v=(d[p[0]]||{})[p[1]]; return v && v!=="unknown" && v!==""; }).length;
+  return Math.round(set/keys.length*100);
+}
+window.RECON={derivePlan:derivePlan,readiness:readiness};
+
+/* ---- DOM ---- */
+if(typeof document==="undefined" || !document.getElementById("form")) return;
+var $=function(id){ return document.getElementById(id); };
+function freshTarget(name){ return {name:name,identity:{},sys:{},guard:{},caps:{},obf:{},refusals:[],notes:""}; }
+var store=K.Store("b9.recon.v1",{firstName:"Target 1 / Model A",fresh:freshTarget,
+  migrate:function(d){ ["identity","sys","guard","caps","obf"].forEach(function(g){ d[g]=d[g]||{}; }); d.refusals=Array.isArray(d.refusals)?d.refusals:[]; }});
+
+function ynuClass(v){ return v==="yes"?"yes":(v==="no"?"no":""); }
+function fieldHTML(g,f,val){
+  var id="f-"+g+"-"+f.k;
+  if(f.t==="text") return '<input class="input ctl" id="'+id+'" data-g="'+g+'" data-k="'+f.k+'" value="'+esc(val)+'">';
+  if(f.t==="area") return '<textarea class="input textarea sm ctl" id="'+id+'" data-g="'+g+'" data-k="'+f.k+'">'+esc(val)+'</textarea>';
+  var opts = f.t==="ynu" ? ["unknown","yes","no"] : f.opts;
+  return '<select class="input si ynu '+ynuClass(val)+' ctl" id="'+id+'" data-g="'+g+'" data-k="'+f.k+'">'+
+    opts.map(function(o){ return '<option value="'+o+'" '+((val||opts[0])===o?"selected":"")+'>'+o+'</option>'; }).join("")+'</select>';
+}
+function renderForm(){
+  var d=store.active();
+  $("form").innerHTML=GROUPS.map(function(grp){
+    return '<div class="card"><h3 class="h-sec">'+grp.title+'</h3>'+
+      grp.fields.map(function(f){ var val=(d[grp.g]||{})[f.k]||""; var block=(f.t==="area");
+        return '<div class="frow" '+(block?'style="align-items:flex-start"':'')+'><label>'+f.label+'</label>'+
+          (block?'<div class="ctl" style="flex:1 1 100%">'+fieldHTML(grp.g,f,val)+'</div>':fieldHTML(grp.g,f,val))+'</div>';
+      }).join("")+'</div>';
+  }).join("")+
+  '<div class="card"><h3 class="h-sec">Refusal taxonomy (signature → counter)</h3><div id="taxList"></div>'+
+    '<div class="tax"><input class="input sig" id="taxSig" placeholder="refusal signature you saw"><input class="input cnt" id="taxCnt" placeholder="counter to try"><button class="btn sm" id="taxAdd">Add</button></div></div>'+
+  '<div class="card"><h3 class="h-sec">Notes</h3><textarea class="input textarea sm" id="notes" placeholder="free notes…">'+esc(d.notes||"")+'</textarea></div>';
+  bindForm(); renderTax(); renderPlan();
+}
+function bindForm(){
+  var d=store.active();
+  K_each("[data-g]",function(el){
+    var g=el.dataset.g,k=el.dataset.k, ev=(el.tagName==="SELECT")?"change":"input";
+    el.addEventListener(ev,function(){ d[g]=d[g]||{}; d[g][k]=el.value; if(el.classList.contains("ynu")){ el.classList.remove("yes","no"); if(el.value==="yes")el.classList.add("yes"); if(el.value==="no")el.classList.add("no"); } store.save(); renderPlan(); });
+  });
+  $("notes").addEventListener("input",function(){ d.notes=$("notes").value; store.save(); });
+  $("taxAdd").onclick=function(){ var s=$("taxSig").value.trim(), c=$("taxCnt").value.trim(); if(!s&&!c) return; d.refusals.push({sig:s,counter:c}); $("taxSig").value="";$("taxCnt").value=""; store.save(); renderTax(); };
+}
+function renderTax(){
+  var d=store.active(), box=$("taxList");
+  box.innerHTML = d.refusals.length ? d.refusals.map(function(r,i){
+    return '<div class="taxrow"><span class="sig" style="color:var(--r-fail)">'+esc(r.sig||"—")+'</span><span>→</span><span class="cnt" style="color:var(--r-success)">'+esc(r.counter||"—")+'</span><button class="linkbtn" data-del="'+i+'">✕</button></div>';
+  }).join("") : '<div class="hint" style="margin-top:4px">No refusal types recorded yet.</div>';
+  K_each("[data-del]",function(b){ b.onclick=function(){ d.refusals.splice(+b.dataset.del,1); store.save(); renderTax(); }; });
+}
+function renderPlan(){
+  var d=store.active(), plan=derivePlan(d), r=readiness(d);
+  $("readyPct").textContent=r+"%"; $("readyBar").style.width=r+"%";
+  $("primary").textContent=plan.primary;
+  $("layers").innerHTML=plan.layers.map(function(l){ return "<li>"+esc(l)+"</li>"; }).join("");
+}
+function K_each(sel,fn){ Array.prototype.forEach.call(document.querySelectorAll(sel),fn); }
+
+/* worksheet markdown */
+function toMarkdown(){
+  var d=store.active(), plan=derivePlan(d);
+  var md="# Recon worksheet — "+d.name+"\n\nDate: "+new Date().toISOString().slice(0,10)+"\n\n";
+  GROUPS.forEach(function(grp){ md+="## "+grp.title+"\n\n";
+    grp.fields.forEach(function(f){ md+="- "+f.label+": "+(((d[grp.g]||{})[f.k])||"—")+"\n"; }); md+="\n"; });
+  md+="## Refusal taxonomy\n\n";
+  md+= d.refusals.length ? d.refusals.map(function(r){ return "- `"+(r.sig||"—")+"` → "+(r.counter||"—"); }).join("\n")+"\n\n" : "- —\n\n";
+  md+="## Plan — opening move\n\n**"+plan.primary+"**\n\n"+(plan.layers.length?plan.layers.map(function(l){return "- "+l;}).join("\n"):"- (no extra layers)")+"\n\n";
+  if(d.notes) md+="## Notes\n\n"+d.notes+"\n";
+  return md;
+}
+
+/* top bar */
+function renderSel(){ $("sel").innerHTML=store.all().map(function(d){ return '<option value="'+d.id+'" '+(d.id===store.activeId()?"selected":"")+'>'+esc(d.name)+'</option>'; }).join(""); }
+$("sel").onchange=function(){ store.setActive($("sel").value); renderForm(); };
+$("newBtn").onclick=function(){ store.add("Target "+(store.all().length+1)); renderSel(); renderForm(); };
+$("renBtn").onclick=function(){
+  var d=store.active();
+  $("modalBox").innerHTML='<h2>Target</h2><label class="fld">Name</label><input class="input" id="pn" value="'+esc(d.name)+'"><div class="actions"><button class="btn danger" id="del" style="margin-right:auto">Delete</button><button class="btn" id="cx">Cancel</button><button class="btn primary" id="sv">Save</button></div>';
+  $("modal").classList.add("show");
+  $("sv").onclick=function(){ store.rename(d.id,$("pn").value.trim()||d.name); $("modal").classList.remove("show"); renderSel(); };
+  $("cx").onclick=function(){ $("modal").classList.remove("show"); };
+  $("del").onclick=function(){ if(!store.remove(d.id)){ K.toast("Can't delete the only target"); return; } $("modal").classList.remove("show"); renderSel(); renderForm(); };
+};
+$("modal").addEventListener("click",function(e){ if(e.target===$("modal")) $("modal").classList.remove("show"); });
+$("mdBtn").onclick=function(){ K.download("recon-"+(store.active().name.replace(/[^\w.-]+/g,"_").slice(0,40))+".md",toMarkdown(),"text/markdown"); };
+$("jsonBtn").onclick=function(){ K.download("recon-export.json",JSON.stringify({docs:store.all(),activeId:store.activeId()},null,2),"application/json"); };
+$("impBtn").onclick=function(){ $("impFile").click(); };
+$("impFile").onchange=function(e){ var f=e.target.files[0]; if(!f) return; var r=new FileReader();
+  r.onload=function(){ try{ var o=JSON.parse(r.result); if(!Array.isArray(o.docs)) throw new Error("bad"); store.replaceAll(o.docs,o.activeId); renderSel(); renderForm(); K.toast("imported"); }catch(err){ K.toast("invalid JSON"); } };
+  r.readAsText(f); e.target.value=""; };
+
+K.initTheme("themeBtn");
+if(window.B9ICON){ var bi=document.getElementById("brandIco"); if(bi) bi.innerHTML=B9ICON("recon",{size:16}); B9ICON.setFavicon("recon"); }
+renderSel(); renderForm();
+})();
+</script>
+</body>
+</html>

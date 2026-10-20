@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Facet · B9</title>
+<meta name="description" content="Technique-level reframing & wording library for Arena recon. Re-expresses your own benign payload along neutral linguistic axes. Offline, transform-only.">
+<link rel="stylesheet" href="../../shared/theme.css">
+</head>
+<body>
+<div id="app"></div>
+<script src="../../shared/icons.js"></script>
+<script src="../../shared/core.js"></script>
+<script>
+"use strict";
+/* ============================================================================
+   Facet — technique-level reframing & wording library (B9 Tool 2).
+
+   SAFETY CONTRACT (implemented literally):
+   1. Transforms, never invents. Every output re-expresses text the user typed.
+   2. Neutral dictionaries only. NEUTRAL_CLUSTERS below is general-register
+      everyday English — the safety boundary. See the curation rule comment.
+   3. Recon framing is primary. Purpose: find the model's word-level vs.
+      intent-level decision boundary on the user's own benign payload.
+   This file provides Facet's axes + lexicon + transform(); the shared engine
+   (core.js) owns the queue, stats, export, keyboard loop and storage.
+   ============================================================================ */
+(function(){
+var U=B9.util, esc=U.esc, pick=U.pick, matchCase=U.matchCase, lowerFirst=U.lowerFirst, upperFirst=U.upperFirst, clamp=U.clamp;
+
+/* ----------------------------------------------------------------------------
+   THE SHIPPED LEXICON — SAFETY BOUNDARY.
+   Every word here is general-register everyday English. No term specific to
+   weapons, explosives, drugs/synthesis, malware/exploits, CBRN, violence, or
+   abuse. This list is the tool's safety boundary — DO NOT extend it with any
+   harm-domain vocabulary. The tool can only re-word; it cannot manufacture
+   harmful substance.
+   ---------------------------------------------------------------------------- */
+var NEUTRAL_CLUSTERS=[
+  ["extract","remove","take out","retrieve","pull out","get"],
+  ["explain","describe","walk through","walk me through","outline","detail","break down"],
+  ["make","build","assemble","put together","construct","create"],
+  ["find","locate","identify","spot","pick out"],
+  ["change","modify","alter","adjust","edit","tweak"],
+  ["show","display","present","lay out","give"],
+  ["combine","mix","merge","join","blend"],
+  ["start","begin","kick off","initiate"],
+  ["stop","end","halt","cease","wrap up"],
+  ["list","enumerate","itemize","number"],
+  ["summarize","recap","sum up","condense"],
+  ["compare","contrast","weigh","match up"],
+  ["check","verify","confirm","double-check"],
+  ["use","utilize","employ","apply"],
+  ["need","require","want","would like"],
+  ["help","assist","support","aid"],
+  ["tell","inform","let me know","notify"],
+  ["provide","supply","give","offer"],
+  ["choose","select","pick","opt for"],
+  ["improve","enhance","refine","polish"],
+  ["add","include","append","attach"],
+  ["reduce","lower","cut","trim"],
+  ["increase","raise","boost","grow"],
+  ["continue","proceed","carry on","keep going"],
+  ["repeat","redo","do again","reiterate"],
+  ["answer","respond","reply","address"],
+  ["ask","request","query","inquire"],
+  ["consider","think about","contemplate","weigh up"],
+  ["understand","grasp","follow","get"],
+  ["record","note","log","write down"],
+  ["organize","arrange","sort","order"],
+  ["plan","map out","lay out","schedule"],
+  ["review","go over","examine","look at"],
+  ["test","try","trial","check out"],
+  ["fix","resolve","sort out","mend"],
+  ["clarify","spell out","make clear","elaborate"],
+  ["define","characterize","pin down","frame"],
+  ["estimate","approximate","gauge","guess"],
+  ["calculate","compute","work out","figure out"],
+  ["convert","transform","translate","turn into"],
+  ["split","divide","separate","break up"],
+  ["gather","collect","round up","compile"],
+  ["highlight","emphasize","stress","underline"],
+  ["demonstrate","show","illustrate","exhibit"],
+  ["suggest","recommend","propose","advise"],
+  ["allow","permit","let","enable"],
+  ["avoid","prevent","steer clear of","skip"],
+  ["complete","finish","wrap up","conclude"],
+  ["expand","extend","broaden","widen"],
+  ["simplify","streamline","ease","boil down"],
+  ["big","large","sizable","substantial"],
+  ["small","minor","slight","compact"],
+  ["many","numerous","several","plenty of"],
+  ["few","a handful of","a couple of","limited"],
+  ["good","great","solid","fine"],
+  ["bad","poor","weak","subpar"],
+  ["fast","rapid","quick","swift"],
+  ["slow","gradual","unhurried","measured"],
+  ["important","essential","key","crucial"],
+  ["simple","straightforward","basic","plain"],
+  ["hard","difficult","tough","tricky"],
+  ["easy","effortless","simple","painless"],
+  ["clear","plain","evident","obvious"],
+  ["new","fresh","recent","novel"],
+  ["old","prior","former","earlier"],
+  ["main","primary","chief","central"],
+  ["extra","additional","further","added"],
+  ["about","regarding","concerning","on"],
+  ["because","since","as","given that"],
+  ["so","therefore","thus","hence"],
+  ["but","however","yet","though"],
+  ["also","additionally","as well","too"],
+  ["first","initially","to begin","up front"],
+  ["next","then","afterwards","subsequently"],
+  ["finally","lastly","in the end","ultimately"],
+  ["maybe","perhaps","possibly","potentially"],
+  ["now","currently","at present","right now"],
+  ["often","frequently","regularly","commonly"],
+  ["quickly","rapidly","swiftly","promptly"],
+  ["carefully","cautiously","thoroughly","deliberately"],
+  ["please","kindly","if you would","when you can"],
+  ["overall","in general","broadly","on the whole"],
+  ["specifically","in particular","namely","precisely"],
+  ["typically","usually","generally","as a rule"],
+  ["approximately","roughly","around","about"],
+  ["item","element","entry","piece"],
+  ["part","section","segment","portion"],
+  ["step","stage","phase","part"],
+  ["way","method","approach","manner"],
+  ["goal","aim","objective","target"],
+  ["result","outcome","output","upshot"],
+  ["idea","concept","notion","thought"],
+  ["example","instance","case","sample"]
+];
+
+/* register framing pools (Axis 2) and mood templates (Axis 3) are neutral
+   scaffolding phrases only. */
+var LEAD_VERBS=(function(){
+  var set={};
+  NEUTRAL_CLUSTERS.forEach(function(c){ c.forEach(function(w){ set[w]=1; }); });
+  ["write","draft","generate","produce","prepare","discuss","analyze","define","compare",
+   "walk me through","break down","put together","lay out","take out","pull out"].forEach(function(w){ set[w]=1; });
+  // keep only plausible action verbs (skip adjectives/connectives for clause detection)
+  var skip={big:1,small:1,many:1,few:1,good:1,bad:1,fast:1,slow:1,important:1,simple:1,hard:1,easy:1,
+    clear:1,new:1,old:1,main:1,extra:1,about:1,because:1,so:1,but:1,also:1,first:1,next:1,finally:1,
+    maybe:1,now:1,often:1,quickly:1,carefully:1,please:1,overall:1,specifically:1,typically:1,
+    approximately:1,item:1,part:1,step:1,way:1,goal:1,result:1,idea:1,example:1};
+  return Object.keys(set).filter(function(w){ return !skip[w]; }).sort(function(a,b){ return b.length-a.length; });
+})();
+
+/* ----------------------------------------------------------------------------
+   Transform helpers
+   ---------------------------------------------------------------------------- */
+function buildLexicon(userClusters){
+  var members=[], alt=Object.create(null);
+  function addCluster(c){
+    var lc=c.map(function(w){ return w.toLowerCase(); });
+    lc.forEach(function(w){ if(!(w in alt)){ alt[w]=lc.filter(function(x){ return x!==w; }); members.push(w); } });
+  }
+  NEUTRAL_CLUSTERS.forEach(addCluster);
+  (userClusters||[]).forEach(function(c){ if(c&&c.length>1) addCluster(c); });
+  members.sort(function(a,b){ return b.length-a.length; });
+  var re=members.length ? new RegExp("\\b("+members.map(function(w){ return w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"); }).join("|")+")\\b","gi") : null;
+  return {re:re, alt:alt};
+}
+function verbSwap(text,prob,rng,lex){
+  if(!lex.re) return text;
+  return text.split("\n").map(function(line){
+    if(/^\s*#LOCK\b/i.test(line)) return line;          // respect #LOCK
+    return line.replace(lex.re,function(m){
+      if(rng()>=prob) return m;
+      var alts=lex.alt[m.toLowerCase()];
+      if(!alts||!alts.length) return m;
+      return matchCase(m,pick(alts,rng));
+    });
+  }).join("\n");
+}
+
+function gerund(v){
+  var parts=v.toLowerCase().split(" "), w=parts[0];
+  if(/ie$/.test(w)) w=w.slice(0,-2)+"ying";
+  else if(/[^aeiou]e$/.test(w)) w=w.slice(0,-1)+"ing";
+  else w=w+"ing";
+  parts[0]=w; return parts.join(" ");
+}
+function stripTrail(s){ return s.replace(/[\s.?!]+$/,""); }
+
+/* heuristic clause extraction: find the lead request verb in the first sentence.
+   Confident only when the verb is near the start (short preamble). */
+function extractClause(text){
+  var firstSentence=(text.match(/^[\s\S]*?(?:[.?!\n]|$)/)||[text])[0];
+  var tail=text.slice(firstSentence.length);
+  var best=null;
+  for(var i=0;i<LEAD_VERBS.length;i++){
+    var v=LEAD_VERBS[i];
+    var re=new RegExp("\\b"+v.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\b","i");
+    var m=re.exec(firstSentence);
+    if(m && (best===null || m.index<best.index || (m.index===best.index && v.length>best.verb.length)))
+      best={index:m.index, verb:m[0], end:m.index+m[0].length};
+  }
+  if(!best || best.index>60) return {ok:false};
+  var rest=stripTrail(firstSentence.slice(best.end).trim());
+  if(!rest) return {ok:false};
+  return {ok:true, verb:best.verb, rest:rest, tail:tail};
+}
+
+function applyMood(text,mood,rng){
+  var c=extractClause(text);
+  if(c.ok){
+    var v=c.verb, rest=c.rest, tail=c.tail, out;
+    if(mood==="imperative")      out=upperFirst(v.toLowerCase())+" "+rest+".";
+    else if(mood==="interrogative") out="How would one "+v.toLowerCase()+" "+rest+"?";
+    else if(mood==="conditional")   out="If someone were "+gerund(v)+" "+rest+", what would that involve?";
+    else if(mood==="passive")       out="A clear account of how to "+v.toLowerCase()+" "+rest+" is needed.";
+    else if(mood==="role")          out="Imagine a teacher who needs to "+v.toLowerCase()+" "+rest+". How would they do it?";
+    else out=text;
+    return {text:out+(tail?tail:""), approx:false};
+  }
+  // wrap mode — meaning approximate
+  var w;
+  if(mood==="imperative")        w="Please handle the following:\n\n"+text;
+  else if(mood==="interrogative")w="How would one approach the following?\n\n"+text;
+  else if(mood==="conditional")  w="Consider the following hypothetically \u2014 what would it involve?\n\n"+text;
+  else if(mood==="passive")      w="The following is to be addressed:\n\n"+text;
+  else if(mood==="role")         w="A teacher walking through this would explain:\n\n"+text;
+  else w=text;
+  return {text:w, approx:true};
+}
+
+function applyRegister(text,reg){
+  var t=text.trim();
+  if(reg==="casual")   return "hey, "+lowerFirst(t)+" \u2014 thanks!";
+  if(reg==="formal")   return "I would like to formally request the following. "+t;
+  if(reg==="academic") return "This analysis concerns the matter described below. "+t;
+  if(reg==="technical")return "TASK\nObjective: "+t;
+  return text; // neutral
+}
+
+function parseSlots(text){ var set=[], re=/\{\{\s*([\w-]+)\s*\}\}/g, m; while((m=re.exec(text))){ if(set.indexOf(m[1])<0) set.push(m[1]); } return set; }
+function resolveAbstraction(text,mode,terms){
+  return text.replace(/\{\{\s*([\w-]+)\s*\}\}/g,function(m,n){
+    if(mode==="general"){ var v=terms[n]; return (v&&v.trim())?v.trim():n; }
+    return n; // concrete: drop braces, keep the label word
+  });
+}
+
+/* ----------------------------------------------------------------------------
+   defaults
+   ---------------------------------------------------------------------------- */
+function defaultAxes(){
+  return {
+    verb:{on:true,intensity:0.5},
+    register:{casual:false,neutral:false,formal:true,academic:false,technical:false},
+    mood:{imperative:false,interrogative:true,conditional:false,passive:false,role:false},
+    abstract:{on:false}
+  };
+}
+var REGISTERS=["casual","neutral","formal","academic","technical"];
+var MOODS=["imperative","interrogative","conditional","passive","role"];
+
+/* ----------------------------------------------------------------------------
+   Pane A
+   ---------------------------------------------------------------------------- */
+function abstractHTML(p){
+  var names=parseSlots(p.base||"");
+  if(!names.length) return '<div class="hint" style="margin-top:6px">No <code>{{term}}</code> markers in the base yet. Mark a term to abstract, e.g. <code>{{process}}</code>.</div>';
+  return names.map(function(nm){
+    var val=(p.abstractTerms&&p.abstractTerms[nm])||"";
+    return '<div class="prow" style="display:block;margin-top:8px"><label style="min-width:0;display:block;margin-bottom:4px">{{'+esc(nm)+'}} \u2192 category word</label>'+
+      '<input class="input" data-term="'+esc(nm)+'" value="'+esc(val)+'" placeholder="e.g. the general process"></div>';
+  }).join("");
+}
+function userClustersHTML(p){
+  var cs=p.userClusters||[];
+  if(!cs.length) return '<div class="hint" style="margin-top:6px">No user-defined clusters yet.</div>';
+  return '<div class="opt-row" style="margin-top:8px">'+cs.map(function(c,i){
+    return '<span class="chip violet" style="cursor:default">'+esc(c.join(" \u2194 "))+' <button class="linkbtn" data-delcluster="'+i+'" title="Remove" style="color:inherit">\u2715</button></span>';
+  }).join("")+'</div>';
+}
+
+function renderPaneA(host,p,api){
+  var ax=p.axes;
+  host.innerHTML=
+    '<div class="card"><h3 class="h-sec">Base payload (benign)</h3>'+
+      '<textarea class="input textarea base" id="base" placeholder="Paste your own benign/placeholder payload. Facet only RE-EXPRESSES this text \u2014 it never adds substance.&#10;&#10;Mark a word to keep unchanged with #LOCK on its line. Mark a term to abstract with {{term}}."></textarea>'+
+      '<label class="fld">Scenario (benign placeholder)</label><input class="input" id="scenario" placeholder="e.g. get a step list for a cooking task">'+
+      '<label class="fld">Model label</label><input class="input" id="model" placeholder="e.g. Model C (anonymized)">'+
+      '<div class="hint">Neutral label only (Model A/B/C/D). Do not try to de-anonymize models \u2014 Arena Rule 3.</div></div>'+
+
+    '<div class="card"><h3 class="h-sec">Axis 1 \u00b7 Verb / term swap</h3>'+
+      '<label class="opt '+(ax.verb.on?"on":"")+'" id="verbOpt"><input type="checkbox" id="verbOn" '+(ax.verb.on?"checked":"")+'> enable neutral synonym swap</label>'+
+      '<div class="prow"><label>Intensity</label><input type="range" id="verbInt" min="0" max="1" step="0.05" value="'+ax.verb.intensity+'"><span class="rangeval" id="verbIntV">'+(+ax.verb.intensity).toFixed(2)+'</span></div>'+
+      '<label class="fld">Add my own equivalent-word cluster</label>'+
+      '<div class="row tight"><input class="input grow" id="ucInput" placeholder="treat as equivalent: wordA, wordB, wordC"><button class="btn sm" id="ucAdd">Add</button></div>'+
+      '<div id="ucList">'+userClustersHTML(p)+'</div>'+
+      '<div class="hint">Swaps only shipped-neutral + your own clusters. User clusters stay in this browser (labeled user-defined), never shipped.</div></div>'+
+
+    '<div class="card"><h3 class="h-sec">Axis 2 \u00b7 Register</h3><div class="opt-row" id="regRow">'+
+      REGISTERS.map(function(r){ return '<label class="opt '+(ax.register[r]?"on":"")+'"><input type="checkbox" data-reg="'+r+'" '+(ax.register[r]?"checked":"")+'> '+r+'</label>'; }).join("")+
+      '</div></div>'+
+
+    '<div class="card"><h3 class="h-sec">Axis 3 \u00b7 Mood</h3><div class="opt-row" id="moodRow">'+
+      MOODS.map(function(m){ return '<label class="opt '+(ax.mood[m]?"on":"")+'"><input type="checkbox" data-mood="'+m+'" '+(ax.mood[m]?"checked":"")+'> '+m+'</label>'; }).join("")+
+      '</div><div class="hint">When no lead verb is found, a mood is applied as a wrap and tagged <span class="chip approx">~approx</span>.</div></div>'+
+
+    '<div class="card"><h3 class="h-sec">Axis 4 \u00b7 Abstraction</h3>'+
+      '<label class="opt '+(ax.abstract.on?"on":"")+'" id="absOpt"><input type="checkbox" id="absOn" '+(ax.abstract.on?"checked":"")+'> compare {{term}} concrete vs generalized</label>'+
+      '<div id="absList">'+abstractHTML(p)+'</div></div>'+
+
+    '<div class="card"><h3 class="h-sec">Observations</h3>'+
+      '<textarea class="input textarea sm" id="observations" placeholder="Free-text for the report, e.g. Model C refuses on imperative + verb &quot;make&quot;, accepts interrogative + &quot;put together&quot;."></textarea></div>'+
+
+    '<div class="card"><h3 class="h-sec">Generate</h3>'+
+      '<div class="gen-row">'+
+        '<div><label class="fld">How many</label><input class="input mini" type="number" id="count" min="1" max="'+api.MAX_VARIANTS+'" value="'+p.count+'"></div>'+
+        '<div><label class="fld">Seed</label><input class="input mini" type="number" id="seed" value="'+p.seed+'"></div>'+
+        '<button class="btn sm" id="reseedBtn" title="Random new seed">\u27F3 reseed</button>'+
+      '</div>'+
+      '<div class="hint">Deterministic: same (base + axes + seed) \u2192 identical batch.</div>'+
+      '<button class="btn primary block" id="genBtn" style="margin-top:10px">Generate variants</button>'+
+      '<div class="hint" id="genNote" style="display:none"></div></div>'+
+
+    '<div class="card"><h3 class="h-sec">About \u00b7 pipeline</h3>'+
+      '<div class="hint" style="line-height:1.6"><b style="color:var(--fg-dim)">Facet</b> finds <i>which wording/framing</i> the model reacts to on your benign payload \u2014 the recon step. '+
+      'Copy the winning framing into <b style="color:var(--fg-dim)">Salvo</b> as a new base, then run Best-of-N to raise the hit rate. Both keep submission manual.</div></div>';
+
+  var base=host.querySelector("#base"), scenario=host.querySelector("#scenario"), model=host.querySelector("#model"),
+      count=host.querySelector("#count"), seed=host.querySelector("#seed"),
+      observations=host.querySelector("#observations"), genBtn=host.querySelector("#genBtn"), genNote=host.querySelector("#genNote");
+  base.value=p.base; scenario.value=p.scenario; model.value=p.model; observations.value=p.observations||"";
+
+  function anyAxis(){
+    return p.axes.verb.on || REGISTERS.some(function(r){return p.axes.register[r];}) ||
+      MOODS.some(function(m){return p.axes.mood[m];}) || (p.axes.abstract.on && parseSlots(p.base||"").length>0);
+  }
+  function updateGenEnabled(){
+    var empty=!base.value.trim();
+    genBtn.disabled=empty;
+    if(empty){ genNote.style.display="block"; genNote.className="hint warn"; genNote.textContent="Write a base payload to enable generation."; }
+    else if(!anyAxis()){ genNote.style.display="block"; genNote.className="hint warn"; genNote.textContent="Enable at least one axis (verb / register / mood / abstraction) \u2014 otherwise only the control is produced."; }
+    else { genNote.style.display="none"; }
+  }
+
+  base.addEventListener("input",function(){ p.base=base.value; refreshAbstract(host,p,api); updateGenEnabled(); api.save(); });
+  scenario.addEventListener("input",function(){ p.scenario=scenario.value; api.save(); });
+  model.addEventListener("input",function(){ p.model=model.value; api.save(); });
+  observations.addEventListener("input",function(){ p.observations=observations.value; api.save(); });
+  count.addEventListener("input",function(){ p.count=clamp(parseInt(count.value,10)||1,1,api.MAX_VARIANTS); api.save(); });
+  seed.addEventListener("input",function(){ p.seed=parseInt(seed.value,10)||0; api.save(); });
+  host.querySelector("#reseedBtn").onclick=function(){ seed.value=Math.floor(Math.random()*1e9); p.seed=parseInt(seed.value,10)||0; api.save(); };
+  genBtn.onclick=function(){ var res=api.runGenerate(); if(res&&res.note){ genNote.style.display="block"; genNote.className="hint"+(res.exhausted||res.produced<=1?" warn":""); genNote.textContent=res.note; } };
+
+  // Axis 1
+  host.querySelector("#verbOn").onchange=function(e){ p.axes.verb.on=e.target.checked; host.querySelector("#verbOpt").classList.toggle("on",e.target.checked); updateGenEnabled(); api.save(); };
+  var vi=host.querySelector("#verbInt");
+  vi.oninput=function(){ p.axes.verb.intensity=parseFloat(vi.value); host.querySelector("#verbIntV").textContent=parseFloat(vi.value).toFixed(2); api.save(); };
+  host.querySelector("#ucAdd").onclick=function(){ addUserCluster(host,p,api); };
+  host.querySelector("#ucInput").addEventListener("keydown",function(e){ if(e.key==="Enter"){ e.preventDefault(); addUserCluster(host,p,api); } });
+  bindClusterDeletes(host,p,api);
+
+  // Axis 2 / 3
+  api.els("[data-reg]",host).forEach(function(cb){ cb.onchange=function(){ p.axes.register[cb.dataset.reg]=cb.checked; cb.closest(".opt").classList.toggle("on",cb.checked); updateGenEnabled(); api.save(); }; });
+  api.els("[data-mood]",host).forEach(function(cb){ cb.onchange=function(){ p.axes.mood[cb.dataset.mood]=cb.checked; cb.closest(".opt").classList.toggle("on",cb.checked); updateGenEnabled(); api.save(); }; });
+
+  // Axis 4
+  host.querySelector("#absOn").onchange=function(e){ p.axes.abstract.on=e.target.checked; host.querySelector("#absOpt").classList.toggle("on",e.target.checked); updateGenEnabled(); api.save(); };
+  bindAbstractInputs(host,p,api);
+
+  updateGenEnabled();
+}
+
+function addUserCluster(host,p,api){
+  var inp=host.querySelector("#ucInput");
+  var words=inp.value.replace(/^.*?:/,"").split(/[,\n]/).map(function(x){return x.trim();}).filter(Boolean);
+  words=api.uniq(words);
+  if(words.length<2){ api.toast("Enter 2+ comma-separated words"); return; }
+  p.userClusters=p.userClusters||[]; p.userClusters.push(words); inp.value="";
+  host.querySelector("#ucList").innerHTML=userClustersHTML(p); bindClusterDeletes(host,p,api); api.save();
+}
+function bindClusterDeletes(host,p,api){
+  api.els("[data-delcluster]",host).forEach(function(b){ b.onclick=function(){
+    p.userClusters.splice(+b.dataset.delcluster,1);
+    host.querySelector("#ucList").innerHTML=userClustersHTML(p); bindClusterDeletes(host,p,api); api.save();
+  }; });
+}
+function bindAbstractInputs(host,p,api){
+  api.els("[data-term]",host).forEach(function(t){ t.oninput=function(){ p.abstractTerms=p.abstractTerms||{}; p.abstractTerms[t.dataset.term]=t.value; api.save(); }; });
+}
+function refreshAbstract(host,p,api){
+  var holder=host.querySelector("#absList"); if(holder){ holder.innerHTML=abstractHTML(p); bindAbstractInputs(host,p,api); }
+}
+
+/* ----------------------------------------------------------------------------
+   mount
+   ---------------------------------------------------------------------------- */
+B9.mountTool({
+  id:"facet", icon:"facet", storeKey:"b9.facet.v1", legacyStoreKey:"reframeLab.v1",
+  brand:{scheme:"FACET",path:"lab"}, title:"Facet \u00b7 B9",
+  paneATab:"Base &amp; Axes", paneATitle:"Base &amp; Axes", paneANoun:"axes",
+  bannerText:"Recon tool: find the model's word-level vs. intent-level boundary on your OWN benign payload. It only re-expresses text you type \u2014 it cannot add substance.",
+  footerText:"transforms your own benign text \u00b7 no network \u00b7 submit manually per Arena rules",
+  groupTableTitle:"Boundary map (what the model reacts to)", groupColLabel:"Axis / value",
+  groupEmptyHint:"Log attempts on tagged variants to map the boundary, e.g. interrogative 22% vs imperative 3%, formal beats casual.",
+  firstProjectName:"Scenario 1 / Model A",
+  nextProjectName:function(n){ return "Scenario "+(n+1); },
+  report:{title:"Facet recon report",scenarioLabel:"Scenario (benign placeholder)",groupTableTitle:"Boundary map (what the model reacts to)",groupColLabel:"Axis / value",includeBestVariant:false,observationsField:"observations",logTagsCol:"axes"},
+
+  newProject:function(name){ return {name:name,scenario:"",model:"",base:"",axes:defaultAxes(),userClusters:[],abstractTerms:{},observations:"",variants:[],count:16,seed:123}; },
+  migrateProject:function(p){
+    if(typeof p.base!=="string") p.base="";
+    p.axes=Object.assign(defaultAxes(),p.axes||{});
+    p.axes.verb=Object.assign({on:true,intensity:0.5},p.axes.verb||{});
+    p.axes.register=Object.assign({casual:false,neutral:false,formal:true,academic:false,technical:false},p.axes.register||{});
+    p.axes.mood=Object.assign({imperative:false,interrogative:true,conditional:false,passive:false,role:false},p.axes.mood||{});
+    p.axes.abstract=Object.assign({on:false},p.axes.abstract||{});
+    p.userClusters=Array.isArray(p.userClusters)?p.userClusters:[];
+    p.abstractTerms=p.abstractTerms||{};
+    if(typeof p.observations!=="string") p.observations="";
+    if(p.count==null) p.count=16;
+    if(p.seed==null) p.seed=123;
+  },
+  commitFields:function(p,api){
+    var h=document.getElementById("paneAHost"); if(!h) return;
+    var g=function(id){ return h.querySelector(id); };
+    if(g("#base")) p.base=g("#base").value;
+    if(g("#scenario")) p.scenario=g("#scenario").value;
+    if(g("#model")) p.model=g("#model").value;
+    if(g("#observations")) p.observations=g("#observations").value;
+    if(g("#count")) p.count=clamp(parseInt(g("#count").value,10)||1,1,api.MAX_VARIANTS);
+    if(g("#seed")) p.seed=parseInt(g("#seed").value,10)||0;
+  },
+  renderPaneA:renderPaneA,
+  tagInfo:function(key){
+    if(key==="verb") return {label:"verb swap"};
+    if(key==="abstract") return {label:"abstraction: general"};
+    if(key==="concrete") return {label:"abstraction: concrete"};
+    if(key==="approx") return {label:"~approx",approx:true};
+    if(key.indexOf("register:")===0) return {label:"register: "+key.slice(9)};
+    if(key.indexOf("mood:")===0) return {label:"mood: "+key.slice(5)};
+    return {label:key};
+  },
+  helpExtraRows:function(){
+    return '<div class="h-sec" style="margin-top:14px">Pipeline</div><div class="hint" style="line-height:1.6">Facet finds the axis that works \u2192 copy that framing into Salvo as a new base \u2192 perturb &amp; repeat to raise the hit rate. Transform-only: the shipped lexicon is neutral everyday English and cannot add harmful substance.</div>';
+  },
+
+  generate:function(p){
+    var ax=p.axes, base=p.base;
+    var registers=REGISTERS.filter(function(r){ return ax.register[r]; });
+    var moods=MOODS.filter(function(m){ return ax.mood[m]; });
+    var hasSlots=parseSlots(base).length>0;
+    var absActive=ax.abstract.on && hasSlots;
+    var anyAxis=ax.verb.on || registers.length || moods.length || absActive;
+    var terms=p.abstractTerms||{};
+    var lex=buildLexicon(p.userClusters);
+
+    var res=B9.generate({
+      base:base, count:p.count, seed:p.seed,
+      signature:JSON.stringify({axes:ax,userClusters:p.userClusters,abstractTerms:terms}),
+      makeVariant:function(rng){
+        if(!anyAxis) return false;
+        var text=base, tags=[], approx=false;
+        // Axis 4 — abstraction (uses user markers), innermost.
+        // When the axis is on we emit BOTH sides (tagged) so concrete vs
+        // generalized can be compared; when off we silently resolve to concrete.
+        if(absActive){
+          if(rng()<0.5){ text=resolveAbstraction(text,"general",terms); tags.push("abstract"); }
+          else { text=resolveAbstraction(text,"concrete",terms); tags.push("concrete"); }
+        } else {
+          text=resolveAbstraction(text,"concrete",terms);
+        }
+        // Axis 1 — verb swap
+        if(ax.verb.on){ var sw=verbSwap(text,ax.verb.intensity,rng,lex); if(sw!==text){ text=sw; tags.push("verb"); } }
+        // Axis 3 — mood
+        if(moods.length){ var m=pick(moods,rng); var r=applyMood(text,m,rng); text=r.text; tags.push("mood:"+m); if(r.approx) approx=true; }
+        // Axis 2 — register (outermost framing)
+        if(registers.length){ var rg=pick(registers,rng); text=applyRegister(text,rg); tags.push("register:"+rg); }
+        if(approx) tags.push("approx");
+        if(!tags.length) return null;      // nothing applied -> retry
+        return {text:text, tags:tags};
+      }
+    });
+    if(!anyAxis) res.note="No axis enabled \u2014 only the control (#1) was produced. Enable verb / register / mood / abstraction.";
+    else if(res.exhausted) res.note="Only "+res.produced+" unique variant"+(res.produced===1?"":"s")+" available (requested "+res.requested+"). Enable more axes / registers / moods.";
+    else res.note="Generated "+res.produced+" variants (seed "+p.seed+"). #1 = untouched control.";
+    return res;
+  }
+});
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Run B9 test suite (no deps)
+        run: npm test
+      - name: Assert no network calls in shipped files
+        run: |
+          if grep -rnE "fetch\(|XMLHttpRequest|WebSocket|cdn\.|unpkg|jsdelivr|googleapis" \
+               --include=*.html --include=*.js --include=*.css . \
+             | grep -vE "data:image/svg|/test/|w3.org"; then
+            echo "Network reference found in shipped files"; exit 1
+          else
+            echo "No network references — offline invariant holds"
+          fi

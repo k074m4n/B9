@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Codec · B9</title>
+<meta name="description" content="Offline reversible encode/decode workbench + defensive hidden-Unicode inspector. Transforms your own text locally; no network.">
+<link rel="stylesheet" href="../../shared/theme.css">
+<style>
+.wrap{max-width:1000px;margin:0 auto;padding:var(--gap);width:100%}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:var(--gap);align-items:start}
+@media (max-width:820px){.two{grid-template-columns:1fr}}
+.io{display:flex;flex-direction:column;gap:6px}
+.io textarea{min-height:150px}
+.opts{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin:4px 0 2px}
+.opts .f{display:flex;flex-direction:column;gap:3px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.seg button{background:var(--surface);border:none;color:var(--fg-dim);padding:6px 11px;font-family:var(--font);font-size:var(--fs-sm);cursor:pointer}
+.seg button.on{background:var(--accent);color:var(--bg)}
+.scan{font-family:var(--mono);font-size:var(--fs-sm);max-height:240px;overflow:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--bg-2)}
+.scan .row{display:flex;gap:8px;padding:5px 8px;border-bottom:1px solid var(--line-soft)}
+.scan .row:last-child{border-bottom:none}
+.scan .cp{color:var(--accent);min-width:78px}
+.scan .cat{color:var(--fg-dim);min-width:120px}
+.scan .ch{color:var(--r-fail)}
+.ok{color:var(--r-success)} .bad{color:var(--r-fail)}
+.note-lossy{color:var(--r-partial)}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="topbar">
+    <a class="home-link" href="../../index.html" title="Back to B9 hub">B9</a>
+    <span class="brand hasico"><span id="brandIco"></span>CODEC://bench<span class="caret">_</span></span>
+    <span class="spacer"></span>
+    <span class="badge-offline" title="This tool never makes a network request.">offline</span>
+    <button class="btn tb-btn" id="themeBtn" title="Toggle theme">◐</button>
+  </div>
+
+  <div class="wrap">
+    <div class="banner info show" style="position:static;border:1px solid var(--line);border-radius:var(--radius);margin-bottom:var(--gap)">
+      Local transform bench. Encode/decode your own text for recon (encode the ask · decode the model's reply). Nothing is sent anywhere.
+    </div>
+
+    <div class="two">
+      <div class="card">
+        <h3 class="h-sec">Transform</h3>
+        <div class="io">
+          <label class="fld">input</label>
+          <textarea class="input textarea" id="inp" placeholder="Paste text to encode or decode…"></textarea>
+        </div>
+        <div class="opts">
+          <div class="f"><label class="fld" style="margin:0 0 3px">codec</label>
+            <select class="input si" id="codec" style="width:auto"></select></div>
+          <div class="f"><label class="fld" style="margin:0 0 3px">direction</label>
+            <span class="seg" id="dir"><button data-d="enc" class="on">encode</button><button data-d="dec">decode</button></span></div>
+          <div class="f" id="shiftWrap" style="display:none"><label class="fld" style="margin:0 0 3px">shift</label>
+            <input class="input mini" type="number" id="shift" value="3" min="1" max="25"></div>
+          <button class="btn primary" id="run">Run ▸</button>
+        </div>
+        <div class="hint" id="codecNote"></div>
+        <div class="io" style="margin-top:8px">
+          <label class="fld">output <button class="linkbtn" id="copyOut">copy</button> · <button class="linkbtn" id="swap">⇄ send to input</button></label>
+          <textarea class="input textarea code" id="out" readonly placeholder="Result appears here."></textarea>
+        </div>
+        <button class="btn sm" id="selftest" style="margin-top:8px">Run round-trip self-test</button>
+        <div class="hint" id="selftestOut"></div>
+      </div>
+
+      <div class="card">
+        <h3 class="h-sec">Hidden-Unicode inspector <span class="chip amber">defensive</span></h3>
+        <div class="hint" style="margin-top:0">Scan untrusted text (a pasted doc, tool output, an email) for invisible / confusable characters used to smuggle instructions past humans &amp; filters. Then strip or normalize them.</div>
+        <div class="io" style="margin-top:8px">
+          <label class="fld">text to inspect</label>
+          <textarea class="input textarea" id="insIn" placeholder="Paste text to inspect…"></textarea>
+        </div>
+        <div class="opts">
+          <button class="btn" id="scanBtn">Scan</button>
+          <button class="btn" id="stripBtn">Strip + normalize</button>
+          <span class="hint" id="scanSummary" style="margin:0"></span>
+        </div>
+        <div class="scan" id="scanOut" style="margin-top:8px;display:none"></div>
+        <div class="io" style="margin-top:8px">
+          <label class="fld">cleaned output <button class="linkbtn" id="copyClean">copy</button></label>
+          <textarea class="input textarea code" id="insOut" readonly placeholder="Stripped/normalized text appears here."></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer"><b>Codec</b> · offline transform bench · decode the reply, inspect untrusted text · no data leaves this page</div>
+  <div id="toast"></div>
+</div>
+
+<script src="../../shared/icons.js"></script>
+<script>
+"use strict";
+/* ============================================================================
+   B9 · Codec — reversible encode/decode workbench + hidden-Unicode inspector.
+   Pure, local, offline. All functions on window.CODEC (so they're testable in
+   Node). DOM wiring runs only when the page's elements exist.
+   ============================================================================ */
+(function(){
+/* ---------- helpers ---------- */
+function toBytes(s){ return new TextEncoder().encode(s); }
+function fromBytes(b){ return new TextDecoder().decode(b); }
+
+/* ---------- reversible codecs ---------- */
+var MORSE={ "A":".-","B":"-...","C":"-.-.","D":"-..","E":".","F":"..-.","G":"--.","H":"....","I":"..","J":".---","K":"-.-","L":".-..","M":"--","N":"-.","O":"---","P":".--.","Q":"--.-","R":".-.","S":"...","T":"-","U":"..-","V":"...-","W":".--","X":"-..-","Y":"-.--","Z":"--..","0":"-----","1":".----","2":"..---","3":"...--","4":"....-","5":".....","6":"-....","7":"--...","8":"---..","9":"----.",".":".-.-.-",",":"--..--","?":"..--..","'":".----.","!":"-.-.--","/":"-..-.","(":"-.--.",")":"-.--.-","&":".-...",":":"---...",";":"-.-.-.","=":"-...-","+":".-.-.","-":"-....-","_":"..--.-","\"":".-..-.","$":"...-..-","@":".--.-." };
+var MORSE_REV=(function(){ var r={}; for(var k in MORSE) r[MORSE[k]]=k; return r; })();
+var NATO={a:"Alpha",b:"Bravo",c:"Charlie",d:"Delta",e:"Echo",f:"Foxtrot",g:"Golf",h:"Hotel",i:"India",j:"Juliett",k:"Kilo",l:"Lima",m:"Mike",n:"November",o:"Oscar",p:"Papa",q:"Quebec",r:"Romeo",s:"Sierra",t:"Tango",u:"Uniform",v:"Victor",w:"Whiskey",x:"Xray",y:"Yankee",z:"Zulu","0":"Zero","1":"One","2":"Two","3":"Three","4":"Four","5":"Five","6":"Six","7":"Seven","8":"Eight","9":"Nine"};
+var NATO_REV=(function(){ var r={}; for(var k in NATO) r[NATO[k].toLowerCase()]=k; return r; })();
+var LEET={a:"4",e:"3",i:"1",o:"0",s:"5",t:"7",l:"1",b:"8",g:"9"};
+var LEET_REV={"4":"a","3":"e","1":"i","0":"o","5":"s","7":"t","9":"g","8":"b"};
+
+function rot(s,n){ return s.replace(/[a-z]/gi,function(c){ var b=c<="Z"?65:97; return String.fromCharCode((c.charCodeAt(0)-b+n+26)%26+b); }); }
+
+var CODEC={
+  base64:{label:"Base64",
+    enc:function(s){ var b=toBytes(s),bin=""; for(var i=0;i<b.length;i++) bin+=String.fromCharCode(b[i]); return btoa(bin); },
+    dec:function(s){ var bin=atob(s.replace(/\s+/g,"")),b=new Uint8Array(bin.length); for(var i=0;i<bin.length;i++) b[i]=bin.charCodeAt(i); return fromBytes(b); }},
+  hex:{label:"Hex",
+    enc:function(s){ var b=toBytes(s),o=[]; for(var i=0;i<b.length;i++) o.push(("0"+b[i].toString(16)).slice(-2)); return o.join(" "); },
+    dec:function(s){ var h=s.replace(/[^0-9a-f]/gi,""),b=new Uint8Array(h.length/2); for(var i=0;i<b.length;i++) b[i]=parseInt(h.substr(i*2,2),16); return fromBytes(b); }},
+  binary:{label:"Binary (8-bit)",
+    enc:function(s){ var b=toBytes(s),o=[]; for(var i=0;i<b.length;i++) o.push(("00000000"+b[i].toString(2)).slice(-8)); return o.join(" "); },
+    dec:function(s){ var bits=s.replace(/[^01]/g,""),b=new Uint8Array(bits.length/8); for(var i=0;i<b.length;i++) b[i]=parseInt(bits.substr(i*8,8),2); return fromBytes(b); }},
+  url:{label:"URL (percent)",
+    enc:function(s){ return encodeURIComponent(s); },
+    dec:function(s){ return decodeURIComponent(s); }},
+  rot13:{label:"ROT13",selfInverse:true,
+    enc:function(s){ return rot(s,13); }, dec:function(s){ return rot(s,13); }},
+  caesar:{label:"Caesar (shift)",shift:true,
+    enc:function(s,n){ return rot(s,((n||3)%26+26)%26); }, dec:function(s,n){ return rot(s,((-(n||3))%26+26)%26); }},
+  atbash:{label:"Atbash",selfInverse:true,
+    enc:function(s){ return s.replace(/[a-z]/gi,function(c){ var b=c<="Z"?65:97; return String.fromCharCode(b+25-(c.charCodeAt(0)-b)); }); },
+    dec:function(s){ return CODEC.atbash.enc(s); }},
+  reverse:{label:"Reverse (chars)",selfInverse:true,
+    enc:function(s){ return Array.from(s).reverse().join(""); }, dec:function(s){ return Array.from(s).reverse().join(""); }},
+  morse:{label:"Morse",
+    enc:function(s){ return s.toUpperCase().split(/(\s+)/).map(function(w){ if(/^\s+$/.test(w)) return "/"; return w.split("").map(function(c){ return MORSE[c]||c; }).join(" "); }).join(" ").replace(/\s+/g," ").trim(); },
+    dec:function(s){ return s.trim().split(" ").map(function(t){ return t==="/"?" ":(MORSE_REV[t]||t); }).join("").replace(/\s+/g," "); }},
+  nato:{label:"NATO phonetic",
+    enc:function(s){ return s.toLowerCase().split("").map(function(c){ return NATO[c]?NATO[c]:(c===" "?"|":c); }).join(" ").trim(); },
+    dec:function(s){ return s.split(/\s+/).map(function(w){ return w==="|"?" ":(NATO_REV[w.toLowerCase()]!=null?NATO_REV[w.toLowerCase()]:w); }).join(""); }},
+  leet:{label:"Leetspeak",lossy:true,
+    enc:function(s){ return s.replace(/[aeioustlbg]/gi,function(c){ var l=LEET[c.toLowerCase()]; return l||c; }); },
+    dec:function(s){ return s.replace(/[43105789]/g,function(d){ return LEET_REV[d]||d; }); }}
+};
+var CODEC_ORDER=["base64","hex","binary","url","rot13","caesar","atbash","reverse","morse","nato","leet"];
+
+/* ---------- hidden-Unicode inspector (defensive) ---------- */
+var HOMO_MAP={ "а":"a","е":"e","о":"o","с":"c","р":"p","х":"x","у":"y","і":"i","ј":"j","ѕ":"s","А":"A","В":"B","С":"C","Е":"E","Н":"H","К":"K","М":"M","О":"O","Р":"P","Т":"T","Х":"X" };
+function cp(ch){ var c=ch.codePointAt(0); return "U+"+c.toString(16).toUpperCase().padStart(4,"0"); }
+function classify(ch){
+  var c=ch.codePointAt(0);
+  if(c===0x200B||c===0x200C||c===0x200D||c===0x2060||c===0xFEFF) return "zero-width";
+  if(c>=0x202A&&c<=0x202E) return "bidi override";
+  if(c>=0x2066&&c<=0x2069) return "bidi isolate";
+  if(c>=0xE0000&&c<=0xE007F) return "Unicode Tags";
+  if(c>=0xE000&&c<=0xF8FF) return "private use area";
+  if(c>=0xFE00&&c<=0xFE0F) return "variation selector";
+  if(c>=0x1D400&&c<=0x1D7FF) return "math alphanumeric";
+  if(HOMO_MAP[ch]) return "homoglyph (Cyrillic)";
+  return null;
+}
+function scan(text){
+  var hits=[], arr=Array.from(text||"");
+  for(var i=0;i<arr.length;i++){ var cat=classify(arr[i]); if(cat) hits.push({index:i,char:arr[i],cp:cp(arr[i]),category:cat}); }
+  return hits;
+}
+function strip(text){
+  var out=Array.from(text||"").map(function(ch){
+    var cat=classify(ch);
+    if(cat==="homoglyph (Cyrillic)") return HOMO_MAP[ch];
+    if(cat==="zero-width"||cat==="bidi override"||cat==="bidi isolate"||cat==="Unicode Tags"||cat==="private use area"||cat==="variation selector") return "";
+    return ch;
+  }).join("");
+  try{ out=out.normalize("NFKC"); }catch(e){}
+  return out;
+}
+
+window.CODEC={codecs:CODEC,order:CODEC_ORDER,scan:scan,strip:strip,classify:classify};
+
+/* ---------- self-test (round-trip reversible codecs) ---------- */
+function selfTest(){
+  var full="Hello, World 123 — the quick brown fox! café", results=[];
+  var samples={ morse:"HELLO WORLD 123", nato:"hello world 123" };  // charset-limited codecs
+  CODEC_ORDER.forEach(function(k){
+    var c=CODEC[k];
+    if(c.lossy){ results.push({k:k,ok:null}); return; }
+    try{
+      var sample=samples[k]||full, n=c.shift?7:undefined;
+      var enc=c.enc(sample,n), dec=c.dec(enc,n);
+      var ok = (k==="nato") ? dec.toLowerCase()===sample.toLowerCase() : dec===sample;
+      results.push({k:k,ok:ok});
+    }catch(e){ results.push({k:k,ok:false,err:e.message}); }
+  });
+  return results;
+}
+window.CODEC.selfTest=selfTest;
+
+/* ---------- DOM wiring (only in the browser) ---------- */
+if(typeof document==="undefined" || !document.getElementById || !document.getElementById("codec")) return;
+
+var $=function(id){ return document.getElementById(id); };
+var dir="enc";
+var toastT=null;
+function toast(m){ var t=$("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(toastT); toastT=setTimeout(function(){ t.classList.remove("show"); },1300); }
+function copy(text){ try{ if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(text).then(function(){toast("copied");}).catch(fb); return; } }catch(e){} fb();
+  function fb(){ var ta=document.createElement("textarea"); ta.value=text; ta.style.position="fixed"; ta.style.left="-9999px"; document.body.appendChild(ta); ta.select(); try{ document.execCommand("copy"); toast("copied"); }catch(e){} document.body.removeChild(ta); } }
+
+$("codec").innerHTML=CODEC_ORDER.map(function(k){ return '<option value="'+k+'">'+CODEC[k].label+'</option>'; }).join("");
+function refreshCodecUI(){
+  var k=$("codec").value, c=CODEC[k];
+  $("shiftWrap").style.display=c.shift?"flex":"none";
+  var notes=[];
+  if(c.selfInverse) notes.push("self-inverse (encode = decode)");
+  if(c.lossy) notes.push("⚠ lossy — decode is best-effort");
+  $("codecNote").textContent=notes.join(" · ");
+}
+$("codec").onchange=refreshCodecUI; refreshCodecUI();
+Array.prototype.forEach.call($("dir").querySelectorAll("button"),function(b){ b.onclick=function(){ dir=b.dataset.d; Array.prototype.forEach.call($("dir").querySelectorAll("button"),function(x){ x.classList.toggle("on",x===b); }); }; });
+function run(){
+  var k=$("codec").value, c=CODEC[k], s=$("inp").value, n=parseInt($("shift").value,10)||3;
+  try{ $("out").value = dir==="enc" ? c.enc(s,n) : c.dec(s,n); }
+  catch(e){ $("out").value="[error] "+e.message; }
+}
+$("run").onclick=run;
+$("copyOut").onclick=function(){ copy($("out").value); };
+$("swap").onclick=function(){ $("inp").value=$("out").value; $("out").value=""; };
+$("selftest").onclick=function(){
+  var r=selfTest(), pass=r.filter(function(x){return x.ok===true;}).length, skip=r.filter(function(x){return x.ok===null;}).length, fail=r.filter(function(x){return x.ok===false;});
+  var html='<span class="'+(fail.length?"bad":"ok")+'">'+pass+" reversible codecs round-trip OK"+(skip?", "+skip+" lossy skipped":"")+(fail.length?", "+fail.length+" FAILED: "+fail.map(function(x){return x.k;}).join(", "):"")+"</span>";
+  $("selftestOut").innerHTML=html;
+};
+
+/* inspector */
+function renderScan(){
+  var hits=scan($("insIn").value);
+  $("scanSummary").innerHTML = hits.length ? '<span class="bad">'+hits.length+" suspicious char"+(hits.length>1?"s":"")+" found</span>" : '<span class="ok">clean — no hidden/confusable characters</span>';
+  var box=$("scanOut");
+  if(!hits.length){ box.style.display="none"; return; }
+  box.style.display="block";
+  box.innerHTML=hits.slice(0,500).map(function(h){
+    return '<div class="row"><span class="cp">'+h.cp+'</span><span class="cat">'+h.category+'</span><span>@'+h.index+'</span><span class="ch">'+(h.category.indexOf("homoglyph")===0?h.char:"·")+'</span></div>';
+  }).join("");
+}
+$("scanBtn").onclick=renderScan;
+$("stripBtn").onclick=function(){ renderScan(); $("insOut").value=strip($("insIn").value); toast("stripped + normalized"); };
+$("copyClean").onclick=function(){ copy($("insOut").value); };
+
+/* theme toggle */
+(function(){ var KEY="b9.hub.theme"; try{ var t=localStorage.getItem(KEY); if(t) document.documentElement.setAttribute("data-theme",t); }catch(e){}
+  $("themeBtn").onclick=function(){ var c=document.documentElement.getAttribute("data-theme")==="dark"?"light":"dark"; document.documentElement.setAttribute("data-theme",c); try{ localStorage.setItem(KEY,c); }catch(e){} }; })();
+if(window.B9ICON){ var bic=document.getElementById("brandIco"); if(bic) bic.innerHTML=B9ICON("codec",{size:16}); B9ICON.setFavicon("codec"); }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Salvo · B9</title>
+<meta name="description" content="Best-of-N variant generator + manual attempt tracker for Arena red-teaming. Offline, no network, no submission.">
+<link rel="stylesheet" href="../../shared/theme.css">
+</head>
+<body>
+<div id="app"></div>
+<script src="../../shared/icons.js"></script>
+<script src="../../shared/core.js"></script>
+<script>
+"use strict";
+/* ============================================================================
+   Salvo — Best-of-N variant generator + attempt tracker (B9 Tool 1).
+   Fires many small perturbations of the user's own base payload; submission
+   stays manual. This file only provides Salvo's strategies, Pane A, and
+   generate(); the shared engine (core.js) owns everything else.
+   ============================================================================ */
+(function(){
+var U=B9.util, esc=U.esc, pick=U.pick, pickN=U.pickN, matchCase=U.matchCase, clamp=U.clamp;
+
+/* ---------------- strategy engine (each fn: (text, params, rng) => text) ----
+   Order: semantic-preserving edits first, obfuscation (homoglyph, encoding)
+   LAST so the wrap sees the final text. ---------------------------------------- */
+
+/* ~90 neutral connective/filler synonyms. Never the semantic-core nouns. */
+var SYN={
+  "please":["kindly"],"kindly":["please"],
+  "could you":["would you","can you"],"would you":["could you","can you"],"can you":["could you","would you"],
+  "explain":["describe","walk me through","detail"],"describe":["explain","detail"],
+  "need":["require","want"],"require":["need"],"want":["need","would like"],
+  "help":["assist"],"assist":["help"],
+  "show":["display","present"],"display":["show"],
+  "tell":["inform","let me know"],"give":["provide"],"provide":["give"],
+  "begin":["start","commence"],"start":["begin","commence"],"commence":["begin","start"],
+  "get":["obtain"],"obtain":["get"],"use":["utilize","employ"],"utilize":["use"],
+  "make":["create","produce"],"create":["make","produce"],
+  "also":["additionally","as well"],"so":["therefore","thus"],"but":["however","yet"],
+  "because":["since","as"],"since":["because"],"very":["quite","rather"],"really":["truly"],
+  "maybe":["perhaps","possibly"],"perhaps":["maybe"],"now":["currently","at present"],
+  "first":["initially"],"next":["then","afterwards"],"finally":["lastly"],
+  "however":["nonetheless","nevertheless"],"thanks":["thank you"],"hi":["hello"],"hello":["hi"],
+  "okay":["alright","sure"],"sure":["certainly","of course"],"quick":["brief"],
+  "simple":["straightforward"],"important":["essential","key"],"understand":["grasp","follow"],
+  "think":["believe","reckon"],"know":["understand","be aware"],"look":["examine"],
+  "find":["locate"],"change":["modify","alter"],"fix":["resolve"],"check":["verify","confirm"],
+  "list":["enumerate"],"continue":["proceed","carry on"],"ask":["request"],"answer":["respond","reply"],
+  "consider":["contemplate"],"ensure":["make sure"],"about":["regarding","concerning"],
+  "like":["such as"],"big":["large"],"small":["minor"],"many":["numerous","several"],
+  "few":["several"],"good":["great"],"bad":["poor"],"fast":["rapid","quick"],"slow":["gradual"]
+};
+var SYN_KEYS=Object.keys(SYN).sort(function(a,b){return b.length-a.length;});
+var SYN_RE=new RegExp("\\b("+SYN_KEYS.map(function(k){return k.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");}).join("|")+")\\b","gi");
+
+var POLITE_POOL=["Thanks in advance.","Appreciate your help.","Quick question:","One more thing —","If you don't mind.","When you get a chance."];
+var PERSONA_DEFAULT=["As a teacher preparing a lesson,","For a documentation task,","I'm reviewing this for QA,","While writing a tutorial,","As part of a research summary,"];
+var HOMO={a:"а",c:"с",e:"е",i:"і",j:"ј",o:"о",p:"р",s:"ѕ",x:"х",y:"у",A:"А",B:"В",C:"С",E:"Е",H:"Н",K:"К",M:"М",O:"О",P:"Р",T:"Т",X:"Х"};
+var LEET={a:"4",e:"3",i:"1",o:"0",s:"5",t:"7",l:"1",b:"8",g:"9"};
+
+function sCase(text,p,rng){
+  var intensity=p.intensity==null?0.08:p.intensity;
+  var out=text.split("").map(function(ch){
+    if(/[a-zA-Z]/.test(ch) && rng()<intensity) return ch===ch.toLowerCase()?ch.toUpperCase():ch.toLowerCase();
+    return ch;
+  }).join("");
+  if(rng()<0.22){ var m=out.match(/^[^.!?\n]+/);
+    if(m){ var seg=m[0]; var t=rng()<0.5?seg.toUpperCase():seg.replace(/\b\w/g,function(c){return c.toUpperCase();}); out=t+out.slice(seg.length); } }
+  return out;
+}
+function sWhite(text,p,rng){
+  var I=p.intensity==null?0.3:p.intensity;
+  var out=text.replace(/ /g,function(){ return rng()<I*0.5?"  ":(rng()<I*0.2?" ":" "); });
+  out=out.split("\n").map(function(l){ return rng()<I*0.4?l+" ":l; }).join("\n");
+  if(rng()<I*0.5){ var lines=out.split("\n"); var i=Math.floor(rng()*(lines.length+1)); lines.splice(i,0,""); out=lines.join("\n"); }
+  return out;
+}
+function sPunct(text,p,rng){
+  var I=p.intensity==null?0.3:p.intensity, out=text;
+  out=out.replace(/\.\.\.|…/g,function(m){ return rng()<I?(m==="…"?"...":"…"):m; });
+  out=out.replace(/-/g,function(m){ return rng()<I*0.6?"—":m; });
+  out=out.replace(/([a-zA-Z])([.?!])(\s|$)/g,function(full,a,b,c){
+    if(rng()<I*0.4) return a+c;
+    if(b==="." && rng()<I*0.3) return a+"…"+c;
+    if(b==="." && rng()<I*0.2) return a+"?"+c;
+    return full;
+  });
+  if(rng()<I*0.5) out=out.replace(/ (and|or|but|so|then) /i,function(m){ return rng()<0.5?","+m:m; });
+  if(rng()<I*0.4 && !/[.?!]\s*$/.test(out)) out=out.replace(/\s*$/,".");
+  return out;
+}
+function sSyn(text,p,rng){
+  var prob=p.prob==null?0.5:p.prob;
+  return text.replace(SYN_RE,function(m){
+    if(rng()>=prob) return m;
+    var alts=SYN[m.toLowerCase()]; if(!alts||!alts.length) return m;
+    return matchCase(m,pick(alts,rng));
+  });
+}
+function sReorder(text,p,rng){
+  var lines=text.split("\n"); if(lines.length<3) return text;
+  var locked={}, movable=[];
+  lines.forEach(function(l,i){ if(/^\s*#LOCK\b/i.test(l)) locked[i]=l; else movable.push(l); });
+  for(var i=movable.length-1;i>0;i--){ var j=Math.floor(rng()*(i+1)); var t=movable[i]; movable[i]=movable[j]; movable[j]=t; }
+  var out=[], mi=0;
+  for(var k=0;k<lines.length;k++){ out.push(k in locked?locked[k]:movable[mi++]); }
+  return out.join("\n");
+}
+function sPolite(text,p,rng){ var f=pick(POLITE_POOL,rng); return rng()<0.5?f+"\n"+text:text+"\n\n"+f; }
+function sPersona(text,p,rng){ var pool=(p.pool&&p.pool.length)?p.pool:PERSONA_DEFAULT; return pick(pool,rng)+" "+text; }
+function sDelim(text,p,rng){
+  var styles=["```","\"\"\"","~~~","---"], out=text;
+  out=out.replace(/```|"""|~~~/g,function(){ return pick(styles.slice(0,3),rng); });
+  if(/^---/m.test(out) && rng()<0.5) out=out.replace(/^---/m,pick(["***","___","---"],rng));
+  if(rng()<0.5) out=out.replace(/<(\/?)(instructions|system|task|context)>/gi,function(m,slash,name){
+    var map={instructions:"directive",system:"config",task:"job",context:"background"};
+    return "<"+slash+(map[name.toLowerCase()]||name)+">";
+  });
+  return out;
+}
+function sHomo(text,p,rng){ var I=p.intensity==null?0.3:p.intensity;
+  return text.split("").map(function(ch){ return (HOMO[ch]&&rng()<I)?HOMO[ch]:ch; }).join(""); }
+function b64enc(s){ try{ return btoa(unescape(encodeURIComponent(s))); }catch(e){ return s; } }
+function rot13(s){ return s.replace(/[a-zA-Z]/g,function(c){ return String.fromCharCode((c<="Z"?90:122)>=(c=c.charCodeAt(0)+13)?c:c-26); }); }
+function sEncode(text,p,rng){
+  var modes=[]; if(p.base64) modes.push("base64"); if(p.rot13) modes.push("rot13"); if(p.leet) modes.push("leet"); if(p.zw) modes.push("zw");
+  if(!modes.length) return text;
+  var mode=pick(modes,rng);
+  if(mode==="base64") return "The following is base64-encoded. Decode it and proceed:\n"+b64enc(text);
+  if(mode==="rot13") return "The following is ROT13-encoded. Decode it and proceed:\n"+rot13(text);
+  if(mode==="leet"){ var I=p.intensity==null?0.5:p.intensity; return text.split("").map(function(ch){ var l=LEET[ch.toLowerCase()]; return (l&&rng()<I)?l:ch; }).join(""); }
+  if(mode==="zw"){ var I2=p.intensity==null?0.3:p.intensity; return text.split("").map(function(ch,i){ return (i>0&&rng()<I2)?"​"+ch:ch; }).join(""); }
+  return text;
+}
+
+var STRATEGIES=[
+  {key:"case",     name:"Case jitter",      order:10, fn:sCase,    defaults:{intensity:0.08}, params:[{k:"intensity",label:"Intensity",min:0,max:0.4,step:0.01}]},
+  {key:"white",    name:"Whitespace",       order:20, fn:sWhite,   defaults:{intensity:0.3},  params:[{k:"intensity",label:"Intensity",min:0,max:1,step:0.05}]},
+  {key:"punct",    name:"Punctuation",      order:30, fn:sPunct,   defaults:{intensity:0.3},  params:[{k:"intensity",label:"Intensity",min:0,max:1,step:0.05}]},
+  {key:"syn",      name:"Synonym swap",     order:40, fn:sSyn,     defaults:{prob:0.5},       params:[{k:"prob",label:"Swap prob",min:0,max:1,step:0.05}]},
+  {key:"reorder",  name:"Line reorder",     order:50, fn:sReorder, defaults:{},               params:[], note:"Permutes independent lines. Prefix a line with #LOCK to pin it."},
+  {key:"polite",   name:"Politeness frame", order:60, fn:sPolite,  defaults:{},               params:[]},
+  {key:"persona",  name:"Persona prefix",   order:70, fn:sPersona, defaults:{pool:PERSONA_DEFAULT.slice()}, params:[{k:"pool",type:"pool",label:"Role lines (one per line)"}]},
+  {key:"delim",    name:"Delimiter shuffle",order:75, fn:sDelim,   defaults:{},               params:[], note:"Swaps ``` / \"\"\" / --- and XML-ish tag names."},
+  {key:"template", name:"Template slots",   order:5,  fn:null,     defaults:{},               params:[{k:"slots",type:"slots"}], note:"Write the base with {{slot}} placeholders; provide fill values to A/B/C test."},
+  {key:"homo",     name:"Unicode homoglyph",order:90, fn:sHomo,    defaults:{intensity:0.3},  params:[{k:"intensity",label:"Intensity",min:0,max:1,step:0.05}], obf:true},
+  {key:"encode",   name:"Encoding wrap",    order:95, fn:sEncode,  defaults:{base64:false,rot13:false,leet:false,zw:false,intensity:0.5},
+     params:[{k:"base64",type:"sub",label:"base64"},{k:"rot13",type:"sub",label:"ROT13"},{k:"leet",type:"sub",label:"leetspeak"},{k:"zw",type:"sub",label:"zero-width"},{k:"intensity",label:"Leet/ZW intensity",min:0,max:1,step:0.05}], obf:true}
+];
+var STRAT_BY_KEY={}; STRATEGIES.forEach(function(s){ STRAT_BY_KEY[s.key]=s; });
+
+function applyStrategies(text,keys,g,rng){
+  var ordered=keys.slice().sort(function(a,b){ return STRAT_BY_KEY[a].order-STRAT_BY_KEY[b].order; });
+  var out=text;
+  ordered.forEach(function(k){ var st=STRAT_BY_KEY[k]; if(!st.fn) return; out=st.fn(out,(g.params[k]||st.defaults),rng); });
+  return out;
+}
+
+/* ---------------- template helpers ---------------- */
+function parseSlots(text){ var set=[], re=/\{\{\s*([\w-]+)\s*\}\}/g, m; while((m=re.exec(text))){ if(set.indexOf(m[1])<0) set.push(m[1]); } return set; }
+function fillTemplate(text,combo){ return text.replace(/\{\{\s*([\w-]+)\s*\}\}/g,function(m,n){ return (n in combo)?combo[n]:m; }); }
+function crossProduct(slotNames,values,rng,cap){
+  var combos=[{}];
+  for(var si=0;si<slotNames.length;si++){
+    var nm=slotNames[si], vals=(values[nm]||[]).filter(function(v){return v!=="";});
+    if(!vals.length) return [];
+    var next=[];
+    for(var c=0;c<combos.length;c++) for(var v=0;v<vals.length;v++){ var o=Object.assign({},combos[c]); o[nm]=vals[v]; next.push(o); }
+    combos=next; if(combos.length>cap*4) break;
+  }
+  for(var i=combos.length-1;i>0;i--){ var j=Math.floor(rng()*(i+1)); var t=combos[i]; combos[i]=combos[j]; combos[j]=t; }
+  return combos.slice(0,cap);
+}
+
+/* ---------------- defaults ---------------- */
+function defaultGenerator(){
+  var enabled={}, params={};
+  STRATEGIES.forEach(function(s){
+    enabled[s.key]=(s.key==="case"||s.key==="white"||s.key==="punct"||s.key==="syn");
+    params[s.key]=JSON.parse(JSON.stringify(s.defaults));
+  });
+  return {enabled:enabled,params:params,count:20,seed:12345};
+}
+
+/* ---------------- Pane A rendering ---------------- */
+function slotEditorHTML(p){
+  var names=parseSlots(p.basePayload);
+  var store=(p.generator.params.template&&p.generator.params.template.slots)||{};
+  if(!names.length) return '<div class="hint" style="margin-top:6px">No <code>{{slot}}</code> placeholders found in the base payload yet.</div>';
+  return names.map(function(nm){
+    var vals=(store[nm]||[]).join("\n");
+    return '<div class="prow" style="display:block;margin-top:8px"><label style="min-width:0;display:block;margin-bottom:4px">{{'+esc(nm)+'}} values (one per line)</label>'+
+      '<textarea class="input textarea sm" data-slot="'+esc(nm)+'" placeholder="value A&#10;value B">'+esc(vals)+'</textarea></div>';
+  }).join("");
+}
+function strategyHTML(p){
+  var g=p.generator;
+  return STRATEGIES.map(function(s){
+    var on=!!g.enabled[s.key], prm=g.params[s.key]||s.defaults, body="";
+    (s.params||[]).forEach(function(pp){
+      if(pp.type==="sub"){
+        body+='<div class="prow"><label class="sub"><input type="checkbox" data-sub="'+s.key+':'+pp.k+'" '+(prm[pp.k]?"checked":"")+'> '+pp.label+'</label></div>';
+      }else if(pp.type==="pool"){
+        var txt=(prm.pool||PERSONA_DEFAULT).join("\n");
+        body+='<div class="prow" style="display:block"><label style="min-width:0;display:block;margin-bottom:4px">'+pp.label+'</label><textarea class="input textarea sm" data-pool="'+s.key+'">'+esc(txt)+'</textarea></div>';
+      }else if(pp.type==="slots"){
+        body+='<div data-slots="'+s.key+'">'+slotEditorHTML(p)+'</div>';
+      }else{
+        var val=prm[pp.k]==null?0:prm[pp.k];
+        body+='<div class="prow"><label>'+pp.label+'</label><input type="range" data-range="'+s.key+':'+pp.k+'" min="'+pp.min+'" max="'+pp.max+'" step="'+pp.step+'" value="'+val+'"><span class="rangeval" id="rv-'+s.key+'-'+pp.k+'">'+(+val).toFixed(2)+'</span></div>';
+      }
+    });
+    if(s.note) body+='<div class="hint" style="margin-top:8px">'+esc(s.note)+'</div>';
+    var warn=s.obf?'<span class="warnico" title="Changes the literal bytes — may be caught by normalizers. Recon signal: did the model/guardrail decode it?">⚠</span>':"";
+    var hasBody=body.trim().length>0;
+    return '<div class="ctrl '+(on?"on":"")+'" data-strat="'+s.key+'"><div class="ctrl-head">'+
+      '<input type="checkbox" data-enable="'+s.key+'" '+(on?"checked":"")+' title="Enable">'+
+      '<span class="ctrl-name"><span style="width:9px;height:9px;border-radius:2px;flex:none;background:var(--'+B9.chipHue(s.key)+')"></span><span class="nm">'+s.name+'</span>'+warn+'</span>'+
+      (hasBody?'<button class="gear" data-gear="'+s.key+'" title="Parameters">⚙</button>':"")+
+      '</div>'+(hasBody?'<div class="ctrl-body">'+body+'</div>':"")+'</div>';
+  }).join("");
+}
+
+function renderPaneA(host,p,api){
+  host.innerHTML=
+    '<div class="card"><h3 class="h-sec">Base payload</h3>'+
+      '<textarea class="input textarea base" id="basePayload" placeholder="Type the base prompt you crafted. Variants are small perturbations of THIS text — the tool never writes content for you.&#10;&#10;Tips: prefix a line with #LOCK to pin it during reordering. Use {{slot}} placeholders for template A/B testing."></textarea>'+
+      '<label class="fld">Scenario</label><input class="input" id="scenario" placeholder="e.g. persuade to reveal system prompt">'+
+      '<label class="fld">Model label</label><input class="input" id="model" placeholder="e.g. Model B (anonymized)">'+
+      '<div class="hint">Use a neutral label only (Model A/B/C/D). Do not try to de-anonymize models — Arena Rule 3.</div></div>'+
+    '<div class="card"><h3 class="h-sec">Strategies</h3><div id="stratList">'+strategyHTML(p)+'</div></div>'+
+    '<div class="card"><h3 class="h-sec">Generate</h3>'+
+      '<div class="gen-row">'+
+        '<div><label class="fld">How many</label><input class="input mini" type="number" id="count" min="1" max="'+api.MAX_VARIANTS+'" value="'+p.generator.count+'"></div>'+
+        '<div><label class="fld">Seed</label><input class="input mini" type="number" id="seed" value="'+p.generator.seed+'"></div>'+
+        '<button class="btn sm" id="reseedBtn" title="Random new seed">⟳ reseed</button>'+
+      '</div>'+
+      '<div class="hint">Deterministic: same (base + strategies + seed) → identical batch.</div>'+
+      '<button class="btn primary block" id="genBtn" style="margin-top:10px">Generate variants</button>'+
+      '<div class="hint" id="genNote" style="display:none"></div></div>';
+
+  var base=host.querySelector("#basePayload"), scenario=host.querySelector("#scenario"),
+      model=host.querySelector("#model"), count=host.querySelector("#count"),
+      seed=host.querySelector("#seed"), genBtn=host.querySelector("#genBtn"), genNote=host.querySelector("#genNote");
+  base.value=p.basePayload; scenario.value=p.scenario; model.value=p.model;
+
+  function updateGenEnabled(){
+    var empty=!base.value.trim();
+    genBtn.disabled=empty;
+    if(empty){ genNote.style.display="block"; genNote.className="hint warn"; genNote.textContent="Write a base payload to enable generation."; }
+    else { genNote.style.display="none"; }     /* fix: clear the stale hint once base is non-empty */
+  }
+  function commit(){ api.save(); }   /* commitFields reads inputs live via spec.commitFields */
+
+  base.addEventListener("input",function(){ p.basePayload=base.value; refreshSlots(host,p,api); updateGenEnabled(); commit(); });
+  scenario.addEventListener("input",function(){ p.scenario=scenario.value; commit(); });
+  model.addEventListener("input",function(){ p.model=model.value; commit(); });
+  count.addEventListener("input",function(){ p.generator.count=clamp(parseInt(count.value,10)||1,1,api.MAX_VARIANTS); commit(); });
+  seed.addEventListener("input",function(){ p.generator.seed=parseInt(seed.value,10)||0; commit(); });
+  host.querySelector("#reseedBtn").onclick=function(){ seed.value=Math.floor(Math.random()*1e9); p.generator.seed=parseInt(seed.value,10)||0; commit(); };
+  genBtn.onclick=function(){ var res=api.runGenerate(); if(res&&res.note){ genNote.style.display="block"; genNote.className="hint"+(res.exhausted||res.produced<=1?" warn":""); genNote.textContent=res.note; } };
+
+  bindStrategyEvents(host,p,api);
+  updateGenEnabled();
+}
+
+function bindStrategyEvents(host,p,api){
+  var g=p.generator, list=host.querySelector("#stratList");
+  api.els("[data-enable]",list).forEach(function(cb){ cb.onchange=function(){ g.enabled[cb.dataset.enable]=cb.checked; cb.closest(".ctrl").classList.toggle("on",cb.checked); api.save(); }; });
+  api.els("[data-gear]",list).forEach(function(b){ b.onclick=function(){ b.closest(".ctrl").classList.toggle("open"); }; });
+  api.els("[data-range]",list).forEach(function(r){ r.oninput=function(){ var a=r.dataset.range.split(":"); g.params[a[0]]=g.params[a[0]]||{}; g.params[a[0]][a[1]]=parseFloat(r.value); var rv=host.querySelector("#rv-"+a[0]+"-"+a[1]); if(rv) rv.textContent=parseFloat(r.value).toFixed(2); api.save(); }; });
+  api.els("[data-sub]",list).forEach(function(c){ c.onchange=function(){ var a=c.dataset.sub.split(":"); g.params[a[0]]=g.params[a[0]]||{}; g.params[a[0]][a[1]]=c.checked; api.save(); }; });
+  api.els("[data-pool]",list).forEach(function(t){ t.oninput=function(){ var k=t.dataset.pool; g.params[k]=g.params[k]||{}; g.params[k].pool=t.value.split("\n").map(function(x){return x.trim();}).filter(Boolean); api.save(); }; });
+  bindSlotInputs(host,p,api);
+}
+function bindSlotInputs(host,p,api){
+  var g=p.generator;
+  api.els("[data-slot]",host).forEach(function(t){ t.oninput=function(){
+    g.params.template=g.params.template||{}; g.params.template.slots=g.params.template.slots||{};
+    g.params.template.slots[t.dataset.slot]=t.value.split("\n").map(function(x){return x.trim();}).filter(Boolean); api.save();
+  }; });
+}
+function refreshSlots(host,p,api){
+  var holder=host.querySelector('[data-slots="template"]');
+  if(holder){ holder.innerHTML=slotEditorHTML(p); bindSlotInputs(host,p,api); }
+}
+
+/* ---------------- mount ---------------- */
+B9.mountTool({
+  id:"salvo", icon:"salvo", storeKey:"b9.salvo.v1", legacyStoreKey:"salvo.v1",
+  brand:{scheme:"SALVO",path:"variant-lab"}, title:"Salvo · B9",
+  paneATab:"Base &amp; Strategy", paneATitle:"Base &amp; Strategy", paneANoun:"strategies",
+  footerText:"no data leaves this page · submit manually per Arena rules",
+  groupTableTitle:"Success rate by strategy", groupColLabel:"Strategy",
+  groupEmptyHint:"Log attempts on tagged variants to see which transformation family wins. (The control carries no tags.)",
+  firstProjectName:"Scenario 1 / Model A",
+  nextProjectName:function(n){ return "Scenario "+(n+1); },
+  report:{title:"Arena red-team report",scenarioLabel:"Scenario",groupTableTitle:"Success rate by strategy",groupColLabel:"Strategy",includeBestVariant:true,logTagsCol:"variant"},
+
+  newProject:function(name){ return {name:name,scenario:"",model:"",basePayload:"",variants:[],generator:defaultGenerator()}; },
+  migrateProject:function(p){
+    if(typeof p.basePayload!=="string") p.basePayload="";
+    p.generator=p.generator||defaultGenerator();
+    var d=defaultGenerator();
+    p.generator.enabled=Object.assign({},d.enabled,p.generator.enabled||{});
+    p.generator.params=Object.assign({},d.params,p.generator.params||{});
+    if(p.generator.count==null) p.generator.count=20;
+    if(p.generator.seed==null) p.generator.seed=12345;
+  },
+  commitFields:function(p,api){
+    var h=document.getElementById("paneAHost"); if(!h) return;
+    var base=h.querySelector("#basePayload"), sc=h.querySelector("#scenario"), md=h.querySelector("#model"),
+        ct=h.querySelector("#count"), sd=h.querySelector("#seed");
+    if(base) p.basePayload=base.value;
+    if(sc) p.scenario=sc.value;
+    if(md) p.model=md.value;
+    if(ct) p.generator.count=clamp(parseInt(ct.value,10)||1,1,api.MAX_VARIANTS);
+    if(sd) p.generator.seed=parseInt(sd.value,10)||0;
+  },
+  renderPaneA:renderPaneA,
+  tagInfo:function(key){ var s=STRAT_BY_KEY[key]; return s?{label:s.name,hue:B9.chipHue(key)}:{label:key}; },
+
+  generate:function(p){
+    var g=p.generator, base=p.basePayload;
+    var enabled=STRATEGIES.filter(function(s){return g.enabled[s.key];}).map(function(s){return s.key;});
+    var nonTmpl=enabled.filter(function(k){return k!=="template";});
+    var hasTmpl=enabled.indexOf("template")>=0;
+    var combos=null, ci=0;
+    var res=B9.generate({
+      base:base, count:g.count, seed:g.seed,
+      signature:JSON.stringify({enabled:enabled,params:g.params}),
+      prepare:function(rng){
+        if(hasTmpl){ var names=parseSlots(base), vals=(g.params.template&&g.params.template.slots)||{};
+          if(names.length) combos=crossProduct(names,vals,rng,g.count); }
+      },
+      makeVariant:function(rng){
+        if(combos && combos.length){
+          if(nonTmpl.length===0 && ci>=combos.length) return false;
+          var combo=combos[ci%combos.length]; ci++;
+          var text=fillTemplate(base,combo), tags=["template"];
+          var k=pickN(nonTmpl,rng,0,2);
+          if(k.length){ text=applyStrategies(text,k,g,rng); tags=tags.concat(k); }
+          return {text:text,tags:tags};
+        }
+        if(nonTmpl.length===0) return false;
+        var k2=pickN(nonTmpl,rng,1,3);
+        return {text:applyStrategies(base,k2,g,rng),tags:k2};
+      }
+    });
+    if(enabled.length===0) res.note="No strategies enabled — only the control (#1) was produced.";
+    else if(res.exhausted) res.note="Only "+res.produced+" unique variant"+(res.produced===1?"":"s")+" available (requested "+res.requested+"). Enable more strategies or raise intensity.";
+    else res.note="Generated "+res.produced+" variants (seed "+g.seed+"). #1 = untouched control.";
+    return res;
+  }
+});
+})();
+</script>
+</body>
+</html>

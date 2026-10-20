@@ -1,0 +1,15 @@
+# B9 is a static, build-free, offline toolkit — almost nothing to ignore.
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*~
+*.swp
+.idea/
+
+# logs / temp
+*.log
+tmp/
+scratch/
+
+# node (only if a dev-time test runner is ever added locally)
+node_modules/

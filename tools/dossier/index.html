@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dossier · B9</title>
+<meta name="description" content="Offline red-team disclosure report builder (OWASP LLM07 / MITRE ATLAS). Imports Salvo/Facet exports, generates a submission-ready finding. Local only.">
+<link rel="stylesheet" href="../../shared/theme.css">
+<style>
+.wrap{max-width:1100px;margin:0 auto;padding:var(--gap);width:100%;display:grid;grid-template-columns:1fr 1fr;gap:var(--gap);align-items:start}
+@media (max-width:900px){.wrap{grid-template-columns:1fr}}
+.col{min-width:0;display:flex;flex-direction:column;gap:var(--gap)}
+.preview{position:sticky;top:64px}
+.preview pre{white-space:pre-wrap;word-break:break-word;font-size:var(--fs-sm);line-height:1.5;color:var(--fg);background:var(--bg-2);border:1px dashed var(--line);border-radius:var(--radius);padding:12px;max-height:72vh;overflow:auto;margin:0}
+.steprow{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:6px;margin-top:6px}
+@media (max-width:620px){.steprow{grid-template-columns:1fr}}
+.gates label{display:flex;gap:8px;align-items:flex-start;margin-top:6px;font-size:var(--fs-sm);color:var(--fg-dim);cursor:pointer}
+.gatewarn{color:var(--r-fail);font-size:var(--fs-sm);margin-top:8px}
+.gateok{color:var(--r-success);font-size:var(--fs-sm);margin-top:8px}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="topbar">
+    <a class="home-link" href="../../index.html">B9</a>
+    <span class="brand hasico"><span id="brandIco"></span>DOSSIER://report<span class="caret">_</span></span>
+    <select class="proj" id="sel" title="Report"></select>
+    <button class="btn sm" id="newBtn">+ New</button>
+    <button class="btn sm" id="renBtn" title="Rename / delete">⋯</button>
+    <span class="spacer"></span>
+    <span class="badge-offline">offline</span>
+    <button class="btn tb-btn" id="themeBtn" title="Toggle theme">◐</button>
+    <button class="btn tb-btn" id="importEvidence" title="Import a Salvo/Facet JSON export as evidence">↑ evidence</button>
+    <button class="btn tb-btn" id="copyBtn">⧉ copy</button>
+    <button class="btn tb-btn" id="mdBtn">↓ MD</button>
+    <input type="file" id="evFile" accept="application/json,.json" style="display:none">
+  </div>
+
+  <div class="wrap">
+    <div class="col" id="form"></div>
+    <div class="col">
+      <div class="card preview">
+        <h3 class="h-sec">Report preview <button class="linkbtn" id="copyBtn2">copy</button></h3>
+        <pre id="out"></pre>
+      </div>
+    </div>
+  </div>
+  <div class="footer"><b>Dossier</b> · OWASP LLM07 / MITRE ATLAS disclosure builder · local only · authorized testing</div>
+  <div id="toast"></div>
+  <div class="modal" id="modal"><div class="box" id="modalBox"></div></div>
+</div>
+
+<script src="../../shared/icons.js"></script>
+<script src="../../shared/kit.js"></script>
+<script>
+"use strict";
+(function(){
+var K=window.B9KIT, esc=K.esc, pct=K.pct;
+
+var BUGCLASS={
+  llm07:{name:"OWASP LLM07:2025 System Prompt Leakage", atlas:"MITRE ATLAS AML.T0051.000 (LLM Prompt Injection: Direct)"},
+  llm01:{name:"OWASP LLM01:2025 Prompt Injection", atlas:"MITRE ATLAS AML.T0051"},
+  llm05:{name:"OWASP LLM05:2025 Improper Output Handling", atlas:"MITRE ATLAS AML.T0057"},
+  llm06:{name:"OWASP LLM06:2025 Excessive Agency", atlas:"OWASP ASI06 · MITRE ATLAS AML.T0053"},
+  asi:{name:"OWASP Top 10 for Agentic Apps — goal hijack / tool misuse", atlas:"OWASP ASI01–ASI10"},
+  indirect:{name:"OWASP LLM01 (Indirect) — instruction/data conflation", atlas:"MITRE ATLAS AML.T0051.001 (Indirect)"}
+};
+var GATES=[
+  {k:"scope",label:"scope-confirmed (in-scope engagement / lab / your own system)"},
+  {k:"repro",label:"reproducible from a clean session, turn one"},
+  {k:"current",label:"current (re-run today, technique not patched)"},
+  {k:"rootcause",label:"root cause understood"},
+  {k:"reachable",label:"attacker-reachable (unprivileged user can trigger)"},
+  {k:"impact",label:"impact demonstrated (effect actually achieved, not theoretical)"},
+  {k:"ready",label:"submission-ready (exact requests + verbatim responses attached)"}
+];
+
+/* ---- pure: build the report markdown ---- */
+function buildReport(d){
+  d=d||{}; var cls=BUGCLASS[d.bugClass||"llm07"];
+  var md="# "+(d.title||"Red-team finding")+"\n\n";
+  md+="Scenario: "+(d.scenario||"—")+"\n";
+  md+="Model: "+(d.model||"—")+" (anonymized — identity not probed)\n";
+  md+="Date: "+new Date().toISOString().slice(0,10)+"\n\n";
+  md+="**Bug class:** "+cls.name+"  \n**Classification:** "+cls.atlas+"\n\n";
+  md+="## Root cause\n\n"+(d.rootCause||"—")+"\n\n";
+  md+="## Steps to reproduce\n\n";
+  var steps=(d.steps||[]).filter(function(s){ return (s.action||s.req||s.resp); });
+  md+= steps.length ? steps.map(function(s,i){
+    var line="**"+(i+1)+". "+(s.action||"step")+"**";
+    if(s.req) line+="\n   - Request: `"+String(s.req).replace(/\n/g," ")+"`";
+    if(s.resp) line+="\n   - Response: `"+String(s.resp).replace(/\n/g," ")+"`";
+    return line;
+  }).join("\n")+"\n\n" : "1. _(add steps — exact request + verbatim response, timestamped)_\n\n";
+  if(d.base) md+="## Base payload\n\n```\n"+d.base+"\n```\n\n";
+  if(d.evidence) md+="## Results (evidence from "+(d.evidenceFrom||"tool")+")\n\n"+d.evidence+"\n\n";
+  md+="## Impact\n\n"+(d.impact||"—")+"\n\n";
+  md+="## Negative results (include them — this is what makes it credible)\n\n"+(d.negativeResults||"_List the classes that were refused: naive injection, encodings, persona, crescendo… and what finally worked and why._")+"\n\n";
+  md+="## Remediation\n\n"+(d.remediation||"—")+"\n\n";
+  if(d.observations) md+="## Observations\n\n"+d.observations+"\n\n";
+  var g=d.gates||{};
+  md+="## Valid-finding gates\n\n"+GATES.map(function(x){ return "- ["+(g[x.k]?"x":" ")+"] "+x.label; }).join("\n")+"\n\n";
+  var missing=GATES.filter(function(x){ return !g[x.k]; }).length;
+  md+= missing ? "> ⚠ "+missing+" gate(s) unchecked — **one NO kills it**: not submission-ready yet.\n" : "> ✓ All gates pass — submission-ready.\n";
+  return md;
+}
+/* ---- pure: summarize a Salvo/Facet export ---- */
+function importSummary(obj){
+  if(!obj || !Array.isArray(obj.projects) || !obj.projects.length) throw new Error("no projects[] in file");
+  var p=obj.projects.filter(function(x){return x.id===obj.activeProjectId;})[0] || obj.projects[0];
+  var base=p.basePayload||p.base||"";
+  var attempts=[]; (p.variants||[]).forEach(function(v){ (v.attempts||[]).forEach(function(a){ attempts.push(a); }); });
+  var counts={success:0,partial:0,refused:0,flagged:0,fail:0};
+  attempts.forEach(function(a){ if(counts[a.result]!=null) counts[a.result]++; });
+  var total=attempts.length, S=counts.success;
+  var agg={};
+  (p.variants||[]).forEach(function(v){ if(!v.attempts||!v.attempts.length) return;
+    var s=v.attempts.filter(function(a){return a.result==="success";}).length;
+    (v.tags||v.strategies||v.axes||[]).forEach(function(k){ agg[k]=agg[k]||{att:0,suc:0}; agg[k].att+=v.attempts.length; agg[k].suc+=s; }); });
+  var rows=Object.keys(agg).map(function(k){ return {k:k,att:agg[k].att,suc:agg[k].suc,rate:agg[k].att?agg[k].suc/agg[k].att:0}; }).sort(function(a,b){ return b.rate-a.rate; });
+  var summary="- Total attempts: "+total+"\n- Successes: "+S+" (rate "+pct(S,total)+"%)\n- Breakdown: success "+counts.success+" · partial "+counts.partial+" · refused "+counts.refused+" · flagged "+counts.flagged+" · fail "+counts.fail+"\n\n";
+  summary+="| Family / tag | Attempts | Successes | Rate |\n|---|---|---|---|\n"+(rows.length?rows.map(function(r){ return "| "+r.k+" | "+r.att+" | "+r.suc+" | "+Math.round(r.rate*100)+"% |"; }).join("\n"):"| — | 0 | 0 | 0% |")+"\n";
+  return {scenario:p.scenario||"", model:p.model||"", base:base, summary:summary, project:p.name||""};
+}
+window.DOSSIER={buildReport:buildReport,importSummary:importSummary};
+
+/* ---- DOM ---- */
+if(typeof document==="undefined" || !document.getElementById("form")) return;
+var $=function(id){ return document.getElementById(id); };
+function fresh(name){ return {name:name,title:"",scenario:"",model:"",bugClass:"llm07",rootCause:"",impact:"",remediation:"",negativeResults:"",observations:"",base:"",evidence:"",evidenceFrom:"",steps:[],gates:{}}; }
+var store=K.Store("b9.dossier.v1",{firstName:"Finding 1",fresh:fresh,
+  migrate:function(d){ d.gates=d.gates||{}; d.steps=Array.isArray(d.steps)?d.steps:[]; ["title","scenario","model","rootCause","impact","remediation","negativeResults","observations","base","evidence"].forEach(function(k){ if(typeof d[k]!=="string") d[k]=""; }); if(!d.bugClass) d.bugClass="llm07"; }});
+
+function renderForm(){
+  var d=store.active();
+  var bugOpts=Object.keys(BUGCLASS).map(function(k){ return '<option value="'+k+'" '+(d.bugClass===k?"selected":"")+'>'+esc(BUGCLASS[k].name)+'</option>'; }).join("");
+  $("form").innerHTML=
+    '<div class="card"><h3 class="h-sec">Finding</h3>'+
+      row("title","Title (one line)","text",d.title)+
+      row("scenario","Scenario (benign placeholder)","text",d.scenario)+
+      row("model","Model label","text",d.model)+
+      '<label class="fld">Bug class</label><select class="input si" data-k="bugClass">'+bugOpts+'</select></div>'+
+    '<div class="card"><h3 class="h-sec">Narrative</h3>'+
+      area("rootCause","Root cause",d.rootCause)+
+      area("impact","Impact",d.impact)+
+      area("negativeResults","Negative results (what did NOT work + what finally did)",d.negativeResults)+
+      area("remediation","Remediation",d.remediation)+
+      area("observations","Observations",d.observations)+'</div>'+
+    '<div class="card"><h3 class="h-sec">Steps to reproduce <button class="btn sm" id="addStep" style="float:right">+ step</button></h3><div id="steps"></div></div>'+
+    '<div class="card"><h3 class="h-sec">Valid-finding gates</h3><div class="gates" id="gates">'+
+      GATES.map(function(x){ return '<label><input type="checkbox" data-gate="'+x.k+'" '+(d.gates[x.k]?"checked":"")+'> '+esc(x.label)+'</label>'; }).join("")+
+      '</div><div id="gateMsg"></div></div>'+
+    (d.evidence?'<div class="card"><h3 class="h-sec">Imported evidence <button class="linkbtn" id="clearEv">clear</button></h3><div class="hint" style="margin-top:0">From '+esc(d.evidenceFrom||"export")+' · included in the report under “Results”.</div></div>':'');
+  bindForm(); renderSteps(); renderGateMsg(); renderOut();
+}
+function row(k,label,t,v){ return '<label class="fld">'+label+'</label><input class="input" data-k="'+k+'" value="'+esc(v)+'">'; }
+function area(k,label,v){ return '<label class="fld">'+label+'</label><textarea class="input textarea sm" data-k="'+k+'">'+esc(v)+'</textarea>'; }
+function bindForm(){
+  var d=store.active();
+  each("[data-k]",function(el){ var k=el.dataset.k, ev=el.tagName==="SELECT"?"change":"input";
+    el.addEventListener(ev,function(){ d[k]=el.value; store.save(); renderOut(); }); });
+  each("[data-gate]",function(el){ el.addEventListener("change",function(){ d.gates[el.dataset.gate]=el.checked; store.save(); renderGateMsg(); renderOut(); }); });
+  var add=$("addStep"); if(add) add.onclick=function(){ d.steps.push({action:"",req:"",resp:""}); store.save(); renderSteps(); renderOut(); };
+  var ce=$("clearEv"); if(ce) ce.onclick=function(){ d.evidence=""; d.evidenceFrom=""; store.save(); renderForm(); };
+}
+function renderSteps(){
+  var d=store.active();
+  $("steps").innerHTML = d.steps.length ? d.steps.map(function(s,i){
+    return '<div class="steprow"><input class="input" data-si="'+i+'" data-sk="action" placeholder="action" value="'+esc(s.action)+'"><input class="input" data-si="'+i+'" data-sk="req" placeholder="request" value="'+esc(s.req)+'"><input class="input" data-si="'+i+'" data-sk="resp" placeholder="response" value="'+esc(s.resp)+'"><button class="linkbtn" data-sdel="'+i+'">✕</button></div>';
+  }).join("") : '<div class="hint" style="margin-top:4px">No steps yet — add the exact request + verbatim response per step.</div>';
+  each("[data-si]",function(el){ el.addEventListener("input",function(){ d.steps[+el.dataset.si][el.dataset.sk]=el.value; store.save(); renderOut(); }); });
+  each("[data-sdel]",function(b){ b.onclick=function(){ d.steps.splice(+b.dataset.sdel,1); store.save(); renderSteps(); renderOut(); }; });
+}
+function renderGateMsg(){
+  var d=store.active(), missing=GATES.filter(function(x){return !d.gates[x.k];}).length;
+  $("gateMsg").innerHTML = missing ? '<div class="gatewarn">⚠ '+missing+' gate(s) unchecked — one NO kills it: not submission-ready.</div>' : '<div class="gateok">✓ All gates pass — submission-ready.</div>';
+}
+function renderOut(){ $("out").textContent=buildReport(store.active()); }
+function each(sel,fn){ Array.prototype.forEach.call(document.querySelectorAll(sel),fn); }
+
+/* top bar */
+function renderSel(){ $("sel").innerHTML=store.all().map(function(d){ return '<option value="'+d.id+'" '+(d.id===store.activeId()?"selected":"")+'>'+esc(d.name)+'</option>'; }).join(""); }
+$("sel").onchange=function(){ store.setActive($("sel").value); renderForm(); };
+$("newBtn").onclick=function(){ store.add("Finding "+(store.all().length+1)); renderSel(); renderForm(); };
+$("renBtn").onclick=function(){
+  var d=store.active();
+  $("modalBox").innerHTML='<h2>Report</h2><label class="fld">Name</label><input class="input" id="pn" value="'+esc(d.name)+'"><div class="actions"><button class="btn danger" id="del" style="margin-right:auto">Delete</button><button class="btn" id="cx">Cancel</button><button class="btn primary" id="sv">Save</button></div>';
+  $("modal").classList.add("show");
+  $("sv").onclick=function(){ store.rename(d.id,$("pn").value.trim()||d.name); $("modal").classList.remove("show"); renderSel(); };
+  $("cx").onclick=function(){ $("modal").classList.remove("show"); };
+  $("del").onclick=function(){ if(!store.remove(d.id)){ K.toast("Can't delete the only report"); return; } $("modal").classList.remove("show"); renderSel(); renderForm(); };
+};
+$("modal").addEventListener("click",function(e){ if(e.target===$("modal")) $("modal").classList.remove("show"); });
+function doCopy(){ K.copy(buildReport(store.active())); }
+$("copyBtn").onclick=doCopy; $("copyBtn2").onclick=doCopy;
+$("mdBtn").onclick=function(){ K.download("dossier-"+(store.active().name.replace(/[^\w.-]+/g,"_").slice(0,40))+".md",buildReport(store.active()),"text/markdown"); };
+$("importEvidence").onclick=function(){ $("evFile").click(); };
+$("evFile").onchange=function(e){ var f=e.target.files[0]; if(!f) return; var r=new FileReader();
+  r.onload=function(){ try{ var obj=JSON.parse(r.result); var sum=importSummary(obj); var d=store.active();
+    if(!d.scenario) d.scenario=sum.scenario; if(!d.model) d.model=sum.model; if(!d.base) d.base=sum.base;
+    d.evidence=sum.summary; d.evidenceFrom=sum.project||f.name; store.save(); renderForm(); K.toast("evidence imported");
+  }catch(err){ K.toast("invalid export: "+(err.message||"bad JSON")); } };
+  r.readAsText(f); e.target.value=""; };
+
+K.initTheme("themeBtn");
+if(window.B9ICON){ var bi=document.getElementById("brandIco"); if(bi) bi.innerHTML=B9ICON("dossier",{size:16}); B9ICON.setFavicon("dossier"); }
+renderSel(); renderForm();
+})();
+</script>
+</body>
+</html>

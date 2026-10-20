@@ -438,6 +438,13 @@ B9.mountTool({
     if(key.indexOf("mood:")===0) return {label:"mood: "+key.slice(5)};
     return {label:key};
   },
+  family:function(key){
+    if(key==="verb") return "Perturbation";
+    if(key.indexOf("register:")===0) return "Overt Carriers";
+    if(key.indexOf("mood:")===0) return "Composition & Ordering";
+    if(key==="abstract"||key==="concrete") return "Composition & Ordering";
+    return null;
+  },
   helpExtraRows:function(){
     return '<div class="h-sec" style="margin-top:14px">Pipeline</div><div class="hint" style="line-height:1.6">Facet finds the axis that works \u2192 copy that framing into Salvo as a new base \u2192 perturb &amp; repeat to raise the hit rate. Transform-only: the shipped lexicon is neutral everyday English and cannot add harmful substance.</div>';
   },

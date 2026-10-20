@@ -321,6 +321,9 @@ B9.mountTool({
   },
   renderPaneA:renderPaneA,
   tagInfo:function(key){ var s=STRAT_BY_KEY[key]; return s?{label:s.name,hue:B9.chipHue(key)}:{label:key}; },
+  family:function(key){ return ({case:"Perturbation",white:"Perturbation",punct:"Perturbation",syn:"Perturbation",
+    reorder:"Composition & Ordering",delim:"Composition & Ordering",template:"Composition & Ordering",
+    polite:"Overt Carriers",persona:"Overt Carriers",homo:"Encoding Abuse",encode:"Encoding Abuse"})[key]||null; },
 
   generate:function(p){
     var g=p.generator, base=p.basePayload;

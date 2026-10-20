@@ -443,6 +443,20 @@ function mountTool(spec){
     return Object.keys(agg).map(function(k){ return {k:k,att:agg[k].att,suc:agg[k].suc,rate:agg[k].att?agg[k].suc/agg[k].att:0}; })
       .sort(function(a,b){ return b.rate-a.rate || b.att-a.att; });
   }
+  /* roll up by taxonomy family (spec.family(tag) -> label); a variant counts once per family */
+  function aggregateFamilies(p){
+    if(typeof spec.family!=="function") return null;
+    var agg={};
+    p.variants.forEach(function(v){
+      if(!v.attempts.length) return;
+      var s=v.attempts.filter(function(a){return a.result==="success";}).length, fams={};
+      v.tags.forEach(function(k){ var f=spec.family(k); if(f) fams[f]=1; });
+      Object.keys(fams).forEach(function(f){ if(!agg[f]) agg[f]={att:0,suc:0}; agg[f].att+=v.attempts.length; agg[f].suc+=s; });
+    });
+    var rows=Object.keys(agg).map(function(f){ return {k:f,att:agg[f].att,suc:agg[f].suc,rate:agg[f].att?agg[f].suc/agg[f].att:0}; })
+      .sort(function(a,b){ return b.rate-a.rate || b.att-a.att; });
+    return rows.length?rows:null;
+  }
   /* Wilson 95% lower bound for a binomial rate — honest with small N */
   function wilsonLB(s,n){
     if(!n) return 0;
@@ -485,6 +499,13 @@ function mountTool(spec){
             '<td class="num">'+r.att+'</td><td class="num">'+r.suc+'</td><td class="num">'+Math.round(r.rate*100)+'%</td></tr>'; }).join("")+
         '</tbody></table>'
       : '<div class="empty" style="padding:12px">'+esc(spec.groupEmptyHint||"Log attempts on tagged variants to see which family wins. (The control variant carries no tags.)")+'</div>';
+    var fam=aggregateFamilies(p);
+    if(fam){
+      els.groupTable.innerHTML+='<div class="h-sec" style="margin-top:14px">By MLCommons family</div>'+
+        '<table class="st"><thead><tr><th>Family</th><th class="num">Att</th><th class="num">Succ</th><th class="num">Rate</th></tr></thead><tbody>'+
+        fam.map(function(r){ return '<tr><td><span style="display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;background:var(--accent)"></span>'+esc(r.k)+'</td><td class="num">'+r.att+'</td><td class="num">'+r.suc+'</td><td class="num">'+Math.round(r.rate*100)+'%</td></tr>'; }).join("")+
+        '</tbody></table>';
+    }
 
     renderSpark(all);
 
@@ -572,6 +593,9 @@ function mountTool(spec){
     md+="## "+(r.groupTableTitle||"Success rate by strategy")+"\n\n| "+(r.groupColLabel||"Strategy")+" | Attempts | Successes | Rate |\n|---|---|---|---|\n";
     md+= rows.length ? rows.map(function(x){ return "| "+tagInfo(x.k).label+" | "+x.att+" | "+x.suc+" | "+Math.round(x.rate*100)+"% |"; }).join("\n")+"\n\n"
                      : "| — | 0 | 0 | 0% |\n\n";
+    var fam=aggregateFamilies(p);
+    if(fam){ md+="## Success rate by MLCommons family\n\n| Family | Attempts | Successes | Rate |\n|---|---|---|---|\n"+
+      fam.map(function(x){ return "| "+x.k+" | "+x.att+" | "+x.suc+" | "+Math.round(x.rate*100)+"% |"; }).join("\n")+"\n\n"; }
     if(r.includeBestVariant!==false){
       var best=null;
       p.variants.forEach(function(v,idx){ if(v.attempts.length>=3){ var s=v.attempts.filter(function(a){return a.result==="success";}).length, rate=s/v.attempts.length;

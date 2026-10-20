@@ -72,12 +72,17 @@ function ls(key){ try{ return JSON.parse(global.localStorage.getItem(key)); }cat
   ok("after reload variants restored", document.querySelectorAll(".vcard").length>1);
   ok("after reload attempts restored", ls(KEY).projects[0].variants.reduce((s,v)=>s+v.attempts.length,0)===totalBefore);
 
+  // ensure a tagged variant has an attempt (exercises per-tag + family rollup)
+  document.querySelectorAll(".vcard")[1].querySelector('[data-r="success"]').click();
+  ok("MLCommons family rollup in stats", /By MLCommons family/.test($("groupTable").innerHTML));
+
   // exports
   $("exportJsonBtn").click();
   let jsonOK=false; try{ jsonOK=Array.isArray(JSON.parse(global.__lastBlob).projects); }catch(e){}
   ok("export JSON valid", jsonOK);
   $("exportMdBtn").click();
   ok("export MD report header", /# Arena red-team report/.test(global.__lastBlob));
+  ok("export MD has MLCommons family section", /by MLCommons family/i.test(global.__lastBlob));
   ok("export MD best-of-N stats via stats pane", /best-of-N/.test($("funnel").innerHTML));
 
   // import validation

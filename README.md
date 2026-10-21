@@ -1,4 +1,6 @@
-# <img src="shared/logo.svg" alt="B9" height="34"> &nbsp;B9 — AI red-teaming toolkit
+<img src="shared/logo.svg" alt="B9" width="108">
+
+# B9 — AI red-teaming toolkit
 
 > Six offline tools to **map, break, and report** how an LLM fails — without a single network request.
 
@@ -98,9 +100,8 @@ Each tool is a thin page: the trackers hand a small spec to `B9.mountTool()` and
 
 ## Scope & safety
 
-> B9 is for **authorized testing only** — sanctioned engagements, CTF/lab targets, your own systems. Everything uses **benign placeholder goals** (say a phrase, reveal a *lab* secret, flip a harmless decision).
+> B9 is for **authorized testing only** — sanctioned engagements, CTF/lab targets, your own systems.
 
-- It **transforms text you write** — it is not a content generator and ships **no** harm-domain lexicon or "banned-word → safe-word" escape table. Its dictionaries are neutral everyday English; it cannot manufacture harmful substance.
 - It **never contacts any website**, never auto-submits, and never tries to de-anonymize a model (Arena Rules 3 & 4). The tool's job ends at *"here is text to copy."*
 - Findings are framed for **responsible disclosure** (OWASP LLM07 / MITRE ATLAS), negative results included.
 

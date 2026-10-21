@@ -1,6 +1,4 @@
-<img src="shared/logo.svg" alt="B9" width="108">
-
-# B9 — AI red-teaming toolkit
+# <img src="shared/logo.svg" alt="B9" height="70" align="middle"> &nbsp;B9 — AI red-teaming toolkit
 
 > Six offline tools to **map, break, and report** how an LLM fails — without a single network request.
 

@@ -13,3 +13,6 @@ scratch/
 
 # node (only if a dev-time test runner is ever added locally)
 node_modules/
+
+# Claude Code local settings (personal, not published)
+.claude/settings.local.json

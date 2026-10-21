@@ -1,73 +1,109 @@
 # <img src="shared/logo.svg" alt="B9" height="34"> &nbsp;B9 — AI red-teaming toolkit
 
-B9 is an **offline, build-free** collection of helper tools for authorized AI red-teaming
-on Gray Swan Arena. Everything runs locally in the browser from `file://` — no backend,
-no network of any kind, no auto-submission. The tools help you craft and bookkeep
-*variations of text you write*; you paste each one into Arena manually, by design.
+> Six offline tools to **map, break, and report** how an LLM fails — without a single network request.
 
-> Scope & safety: B9 never contacts any website, never auto-submits, and never guesses
-> model identities (Arena Rules 3 & 4). It is content-neutral — it transforms text the
-> user supplies and cannot manufacture harmful substance.
+![offline](https://img.shields.io/badge/offline-file%3A%2F%2F-2b7a4b?style=flat-square)
+![dependencies](https://img.shields.io/badge/dependencies-0-555?style=flat-square)
+![stack](https://img.shields.io/badge/stack-vanilla_JS-b23a3a?style=flat-square)
+![tests](https://img.shields.io/badge/tests-46_passing-2b7a4b?style=flat-square)
+![tools](https://img.shields.io/badge/tools-6-7a4a8c?style=flat-square)
 
-## Tools
+![B9 workflow](docs/overview.svg)
 
-| # | Tool | Scheme | What it does |
-|---|------|--------|--------------|
-| 01 | **Salvo** | `SALVO://variant-lab` | Best-of-N variant generator + attempt tracker. Fires many small, seeded perturbations of a base payload (11 strategies) and tracks the per-variant hit rate. |
-| 02 | **Facet** | `FACET://lab` | Technique-level reframing. Re-expresses your own benign payload along 4 neutral linguistic axes (verb/term, register, mood, abstraction) to map which wording a model reacts to. |
-| — | **Recon** | `RECON://scope` | Target-fingerprint worksheet (identity, system prompt, guardrail topology, capabilities, obfuscation channels) with a live decision-tree "opening move" and a refusal taxonomy. |
-| — | **Codec** | `CODEC://bench` | Reversible encode/decode workbench (Base64, hex, binary, URL, ROT13, Caesar, Atbash, reverse, Morse, NATO, leet) with a round-trip self-test, plus a defensive hidden-Unicode inspector (detect/strip zero-width, bidi, Tags-block, homoglyph carriers). |
-| — | **Sieve** | `SIEVE://oracle` | Client-side oracle tracker for authorized extraction of a benign lab secret: log closed-ended answers, reconstruct the value in a position table, stop on validate. |
-| — | **Dossier** | `DOSSIER://report` | Disclosure report builder (OWASP LLM07 / MITRE ATLAS): steps, impact, negative results, valid-finding gates. Imports a Salvo/Facet JSON export as evidence. |
+**B9** is a browser-based toolkit for **authorized** AI red-teaming (Gray Swan Arena, HTB labs, in-scope bounties). It runs entirely from `file://` — no backend, no build step, no dependencies — and **nothing ever leaves your machine**. You write the payloads; B9 makes the manual loop fast, reproducible, and reportable: it generates variations, tracks what lands, maps the model's defenses, and drafts the disclosure. Submission stays manual, by design.
 
-**Pipeline:** Facet (find the axis/wording that works) → copy the winning framing
-into Salvo as a new base → Best-of-N to raise the hit rate. Both keep submission manual.
+In one line: **the bookkeeping-and-methodology layer around manual red-teaming.** The attack text is yours — B9 gives it reach, memory, and a paper trail.
 
-## Structure
+---
+
+## The toolkit
+
+| Step | Tool | Scheme | What it does |
+|:---:|------|--------|--------------|
+| ① | **Recon** | `RECON://scope` | Fingerprint the target's defense stack — identity, system prompt, guardrail topology, capabilities, obfuscation channels — and get a **live decision-tree opening move**. The recon worksheet, turned into a plan. |
+| ② | **Facet** | `FACET://lab` | Re-express your own benign payload along four neutral linguistic axes (verb/term · register · mood · abstraction) to **map which wording a model reacts to**. Transform-only; a neutral lexicon is the safety boundary. |
+| ③ | **Salvo** | `SALVO://variant-lab` | **Best-of-N.** Fire many small, *seeded* perturbations of a base payload (11 strategies) and track the per-variant hit rate to catch the low-probability success. |
+| ④ | **Dossier** | `DOSSIER://report` | Turn logged attempts into a **submission-ready disclosure** (OWASP LLM07 / MITRE ATLAS): steps, impact, negative results, and the valid-finding gates checklist. Imports a Salvo/Facet export as evidence. |
+| ◇ | **Codec** | `CODEC://bench` | Reversible encode/decode bench (Base64, hex, binary, URL, ROT13, Caesar, Atbash, reverse, Morse, NATO, leet) with a round-trip self-test — plus a **defensive hidden-Unicode inspector** that detects & strips zero-width / bidi / Tags-block / homoglyph carriers from untrusted text. |
+| ◇ | **Sieve** | `SIEVE://oracle` | Client-side **oracle tracker** for authorized extraction of a benign lab secret: log closed-ended answers (boolean / range / code-point), reconstruct the value in a position table, and **stop the moment it validates**. |
+
+**The loop:** `Recon` maps the defenses → `Facet` finds the framing that works → `Salvo` perturbs it Best-of-N to raise the hit rate → `Dossier` writes it up. `Codec` and `Sieve` are the workbench you reach for mid-hunt.
+
+---
+
+## Why it's built this way
+
+- **100% offline.** No `fetch`, `XMLHttpRequest`, `WebSocket`, CDN, font, or analytics — anywhere. Open `index.html` with the network cable unplugged and everything works. (CI even fails the build if a network reference sneaks in.)
+- **Zero dependencies, zero build.** Plain HTML + vanilla JS + one CSS file. Edit a file, reload. Nothing to install.
+- **Deterministic.** Generation is seeded: the same `(base + options + seed)` always produces the identical batch, and variant #1 is always the untouched control.
+- **One system.** Every tool shares the **Carbon** theme; the trackers share one engine (`core.js`), the workbench tools share one helper lib (`kit.js`). Flip between tools and it's the same keyboard loop, the same stats, the same exports.
+- **Private by construction.** All state is `localStorage` only (try/catch-wrapped, private-window safe). Reports export as Markdown or JSON from the top bar.
+
+---
+
+## Quick start
+
+```bash
+git clone https://github.com/k074m4n/B9.git
+cd B9
+# open the hub in a browser — no server needed:
+xdg-open index.html     # Linux   (or: open index.html on macOS)
+```
+
+Pick a tool, write a base payload, hit **Generate**, then run the keyboard loop (trackers):
+
+| key | action | | key | action |
+|:---:|--------|---|:---:|--------|
+| `c` | copy current variant | | `j` / `k` | next / previous |
+| `1`–`4`, `0` | log result | | `u` | undo last log |
+| | | | `?` | shortcuts help |
+
+Copy → paste into the Arena chat yourself → log the result → repeat. Pane C updates live with the success rate, the per-strategy / per-family (MLCommons) breakdown, and a best-of-N estimate.
+
+---
+
+## Testing
+
+A dependency-free Node suite drives the real tools through a hand-rolled DOM — mount, generate, log, undo, persist, reload, export, import, keyboard loop, theme sync, and every workbench tool's pure logic:
+
+```bash
+npm test     # → 46 checks, 0 deps
+```
+
+---
+
+## Project layout
 
 ```
 B9/
-  index.html              # platform hub / launcher
-  shared/
-    theme.css             # shared "Carbon" design system (single source of truth)
-    core.js               # tracker engine: 3-pane shell, variant queue, stats, export/import,
-                          #   seeded PRNG, word-level diff, clipboard, keyboard loop, storage
-    kit.js                # lightweight plumbing for the standalone workbench tools
-  tools/
-    salvo/index.html      # Tool 01 — strategies + generate()        (core.js)
-    facet/index.html      # Tool 02 — axes + neutral lexicon + transform()  (core.js)
-    recon/index.html      # Workbench — target-fingerprint worksheet + decision tree  (kit.js)
-    codec/index.html      # Workbench — reversible codecs + hidden-Unicode inspector  (kit.js)
-    sieve/index.html      # Workbench — client-side oracle tracker     (kit.js)
-    dossier/index.html    # Workbench — OWASP LLM07 disclosure builder  (kit.js)
-  theme-lab.html          # dev-only: live preview of candidate themes (not part of a tool)
+├─ index.html              # platform hub / launcher
+├─ shared/
+│  ├─ theme.css            # "Carbon" design system — single source of truth
+│  ├─ core.js              # tracker engine: 3-pane shell · variant queue · stats ·
+│  │                       #   export/import · seeded PRNG · word diff · keyboard loop
+│  ├─ kit.js               # lightweight plumbing for the workbench tools
+│  ├─ icons.js             # inline SVG glyphs + the interlocking B9 logo
+│  └─ logo.svg             # standalone brand mark
+├─ tools/
+│  ├─ salvo/   facet/      # trackers  (core.js) — Best-of-N · reframing
+│  ├─ recon/   dossier/    # workbench (kit.js)  — target worksheet · report builder
+│  └─ codec/   sieve/      # workbench (kit.js)  — codecs/inspector · oracle tracker
+├─ test/                   # minidom.js + run.js — the 46-check suite
+└─ .github/workflows/      # CI: npm test + the no-network assertion
 ```
 
-Each tool is a thin page that provides only its unique setup pane and generation logic;
-it calls `B9.mountTool(spec)` from `shared/core.js`, which builds the identical shell and
-owns all shared behavior. Result vocabulary (`success / partial / refused / flagged / fail`)
-and the per-strategy / per-axis aggregation are shared so reports from both tools compare.
+Each tool is a thin page: the trackers hand a small spec to `B9.mountTool()` and the engine builds the identical shell; the workbench tools wire their own UI over `kit.js`. The shared result vocabulary (`success / partial / refused / flagged / fail`) and taxonomy rollups mean reports from different tools line up.
 
-## Usage
+---
 
-Open `index.html` in any modern browser (works straight from `file://`, offline).
-Pick a tool, write a base payload, generate variants, then run the keyboard loop:
+## Scope & safety
 
-- `c` copy current variant · `1`–`4` / `0` log result · `j` / `k` move · `?` help
+> B9 is for **authorized testing only** — sanctioned engagements, CTF/lab targets, your own systems. Everything uses **benign placeholder goals** (say a phrase, reveal a *lab* secret, flip a harmless decision).
 
-All data is stored in `localStorage` (per-tool key, wrapped in try/catch — private-window
-safe). Export a Markdown field report or a full JSON backup from the top bar.
+- It **transforms text you write** — it is not a content generator and ships **no** harm-domain lexicon or "banned-word → safe-word" escape table. Its dictionaries are neutral everyday English; it cannot manufacture harmful substance.
+- It **never contacts any website**, never auto-submits, and never tries to de-anonymize a model (Arena Rules 3 & 4). The tool's job ends at *"here is text to copy."*
+- Findings are framed for **responsible disclosure** (OWASP LLM07 / MITRE ATLAS), negative results included.
 
-## Hard invariants (every tool)
+---
 
-- No `fetch` / `XMLHttpRequest` / `WebSocket` / CDN / external anything.
-- No auto-submission, no browser automation, no model-identity guessing.
-- `localStorage`-only persistence, try/catch-wrapped; in-memory fallback + banner on failure.
-- Deterministic generation: same `(base + options + seed)` → identical batch; variant #1
-  is always the untouched base (control).
-
-## Dev notes
-
-- No build step. Edit the files and reload.
-- `theme.css` is the single source of truth for the look; changing it restyles every tool.
-- `theme-lab.html` is a local-only theme picker; it is not loaded by any tool.
+<sub>Built as a portfolio project. Design system: **Carbon** (ink & paper, matte). Status: active — more tools and polish landing on `main`.</sub>

@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="240" viewBox="0 0 920 240" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" role="img" aria-label="B9 workflow: Recon to Facet to Salvo to Dossier">
+  <rect x="0.5" y="0.5" width="919" height="239" rx="12" fill="#1b1c1e" stroke="#2a2b2e"/>
+  <!-- faint grid -->
+  <defs>
+    <pattern id="g" width="26" height="26" patternUnits="userSpaceOnUse">
+      <path d="M26 0H0V26" fill="none" stroke="#ffffff" stroke-opacity="0.025"/>
+    </pattern>
+  </defs>
+  <rect x="1" y="1" width="918" height="238" rx="12" fill="url(#g)"/>
+
+  <!-- B9 monogram, top-left -->
+  <g transform="translate(26,16) scale(0.42)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M35 28C11 28 11 48 35 48" stroke="#8a2626" stroke-width="6"/>
+    <path d="M35 8V48 M35 8C12 8 12 28 35 28" stroke="#c35050" stroke-width="6"/>
+  </g>
+  <text x="58" y="34" fill="#d7d5cd" font-size="15" font-weight="700" letter-spacing="1">B9</text>
+  <text x="80" y="34" fill="#8c8e8a" font-size="12" letter-spacing="2">· AI RED-TEAMING WORKFLOW</text>
+
+  <!-- nodes -->
+  <g stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <!-- cards -->
+    <rect x="55"  y="70" width="180" height="120" rx="8" fill="#232427" stroke="#35363a"/>
+    <rect x="265" y="70" width="180" height="120" rx="8" fill="#232427" stroke="#35363a"/>
+    <rect x="475" y="70" width="180" height="120" rx="8" fill="#232427" stroke="#35363a"/>
+    <rect x="685" y="70" width="180" height="120" rx="8" fill="#232427" stroke="#35363a"/>
+
+    <!-- Recon icon (crosshair) cx=145 -->
+    <g transform="translate(131,88) scale(1.15)" stroke="#c35050" stroke-width="1.7">
+      <circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="2"/>
+      <path d="M12 1.5v4"/><path d="M12 18.5v4"/><path d="M1.5 12h4"/><path d="M18.5 12h4"/>
+    </g>
+    <!-- Facet icon (gem) cx=355 -->
+    <g transform="translate(341,88) scale(1.15)" stroke="#c35050" stroke-width="1.7">
+      <path d="M12 3l7.5 6L12 21 4.5 9z"/><path d="M4.5 9h15"/><path d="M12 3v18"/>
+    </g>
+    <!-- Salvo icon (arrows) cx=565 -->
+    <g transform="translate(551,88) scale(1.15)" stroke="#c35050" stroke-width="1.7">
+      <path d="M3 7h10"/><path d="M3 12h13"/><path d="M3 17h10"/>
+      <path d="M11 4l3.5 3-3.5 3"/><path d="M13.5 9l3.5 3-3.5 3"/><path d="M11 14l3.5 3-3.5 3"/>
+    </g>
+    <!-- Dossier icon (doc+check) cx=775 -->
+    <g transform="translate(761,88) scale(1.15)" stroke="#c35050" stroke-width="1.7">
+      <path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/><path d="M9.5 14l2 2 3.5-4"/>
+    </g>
+
+    <!-- arrows -->
+    <g stroke="#c35050" stroke-width="2">
+      <path d="M239 130h18"/><path d="M255 126l4 4-4 4"/>
+      <path d="M449 130h18"/><path d="M465 126l4 4-4 4"/>
+      <path d="M659 130h18"/><path d="M675 126l4 4-4 4"/>
+    </g>
+  </g>
+
+  <!-- labels -->
+  <g text-anchor="middle" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">
+    <text x="145" y="162" fill="#d7d5cd" font-size="15" font-weight="700">Recon</text>
+    <text x="145" y="180" fill="#8c8e8a" font-size="11">map defenses</text>
+    <text x="355" y="162" fill="#d7d5cd" font-size="15" font-weight="700">Facet</text>
+    <text x="355" y="180" fill="#8c8e8a" font-size="11">find the axis</text>
+    <text x="565" y="162" fill="#d7d5cd" font-size="15" font-weight="700">Salvo</text>
+    <text x="565" y="180" fill="#8c8e8a" font-size="11">best-of-N</text>
+    <text x="775" y="162" fill="#d7d5cd" font-size="15" font-weight="700">Dossier</text>
+    <text x="775" y="180" fill="#8c8e8a" font-size="11">write the finding</text>
+  </g>
+
+  <!-- footer strip -->
+  <text x="60" y="220" fill="#8c8e8a" font-size="11.5">+ workbench: Codec (encode/decode &amp; hidden-unicode inspector) · Sieve (oracle tracker)</text>
+  <text x="896" y="220" text-anchor="end" fill="#6f716d" font-size="11">offline · no network · local-only</text>
+</svg>

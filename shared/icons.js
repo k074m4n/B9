@@ -19,8 +19,16 @@ var P={
   sieve:'<path d="M3 5h18l-7 8v5l-4 2v-7z"/>',
   /* Dossier — a document with a verified check */
   dossier:'<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/><path d="M9.5 14l2 2 3.5-4"/>',
-  /* Ledger — stacked bars / campaign ledger (reserved for the next tool) */
+  /* Ledger — stacked bars / campaign ledger */
   ledger:'<path d="M4 20V10"/><path d="M9.5 20V5"/><path d="M15 20v-8"/><path d="M20.5 20V7"/><path d="M3 20h18"/>',
+  /* Verdict — a score gauge with a needle */
+  verdict:'<path d="M3 17a9 9 0 0 1 18 0"/><path d="M12 17l5-6"/><circle cx="12" cy="17" r="1.3"/><path d="M3 17h2"/><path d="M19 17h2"/>',
+  /* Climb — multi-turn escalation steps */
+  climb:'<path d="M3 20h4v-4h4v-4h4V8h4V4"/><path d="M3 20V12"/>',
+  /* Lens — magnifier over a shield (defensive inspection) */
+  lens:'<circle cx="10.5" cy="10.5" r="6.5"/><path d="M15 15l5 5"/><path d="M10.5 7.5l2.5 1.2v2c0 1.8-1.1 3-2.5 3.6-1.4-.6-2.5-1.8-2.5-3.6v-2z"/>',
+  /* Atlas — an open playbook / reference */
+  atlas:'<path d="M12 6c-2-1.3-4.5-1.3-7-0.5V18c2.5-.8 5-.8 7 .5 2-1.3 4.5-1.3 7-.5V5.5c-2.5-.8-5-.8-7 .5z"/><path d="M12 6v12.5"/>',
   /* B9 — platform mark */
   b9:'<path d="M12 2.4l8.3 4.8v9.6L12 21.6 3.7 16.8V7.2z"/><circle cx="12" cy="12" r="2.4"/>'
 };

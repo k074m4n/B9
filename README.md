@@ -5,8 +5,8 @@
 ![offline](https://img.shields.io/badge/offline-file%3A%2F%2F-2b7a4b?style=flat-square)
 ![dependencies](https://img.shields.io/badge/dependencies-0-555?style=flat-square)
 ![stack](https://img.shields.io/badge/stack-vanilla_JS-b23a3a?style=flat-square)
-![tests](https://img.shields.io/badge/tests-49_passing-2b7a4b?style=flat-square)
-![tools](https://img.shields.io/badge/tools-7-7a4a8c?style=flat-square)
+![tests](https://img.shields.io/badge/tests-51_passing-2b7a4b?style=flat-square)
+![tools](https://img.shields.io/badge/tools-8-7a4a8c?style=flat-square)
 
 ![B9 workflow](docs/overview.svg)
 
@@ -27,6 +27,7 @@ In one line: **the bookkeeping-and-methodology layer around manual red-teaming.*
 | ◇ | **Codec** | `CODEC://bench` | Reversible encode/decode bench (Base64, hex, binary, URL, ROT13, Caesar, Atbash, reverse, Morse, NATO, leet) with a round-trip self-test — plus a **defensive hidden-Unicode inspector** that detects & strips zero-width / bidi / Tags-block / homoglyph carriers from untrusted text. |
 | ◇ | **Sieve** | `SIEVE://oracle` | Client-side **oracle tracker** for authorized extraction of a benign lab secret: log closed-ended answers (boolean / range / code-point), reconstruct the value in a position table, and **stop the moment it validates**. |
 | ◇ | **Ledger** | `LEDGER://campaign` | **Cross-tool campaign dashboard.** Import Salvo/Facet exports and aggregate ASR by **MLCommons family** and class across targets — with a 95% lower bound, a best-of-N estimate, and a "3 refusals → rotate the class" signal. |
+| ◇ | **Verdict** | `VERDICT://score` | **Honest response scorer.** Grade a model reply against the scenario's *exact* success condition — refusal vs **jailbreak-tax** (complied but useless) vs real success — and get the result to log. "Didn't refuse" is not a win (StrongREJECT). |
 
 **The loop:** `Recon` maps the defenses → `Facet` finds the framing that works → `Salvo` perturbs it Best-of-N to raise the hit rate → `Dossier` writes it up. `Codec` and `Sieve` are the workbench you reach for mid-hunt.
 
@@ -68,7 +69,7 @@ Copy → paste into the Arena chat yourself → log the result → repeat. Pane 
 A dependency-free Node suite drives the real tools through a hand-rolled DOM — mount, generate, log, undo, persist, reload, export, import, keyboard loop, theme sync, and every workbench tool's pure logic:
 
 ```bash
-npm test     # → 49 checks, 0 deps
+npm test     # → 51 checks, 0 deps
 ```
 
 ---
@@ -89,8 +90,8 @@ B9/
 │  ├─ salvo/   facet/      # trackers  (core.js) — Best-of-N · reframing
 │  ├─ recon/   dossier/    # workbench (kit.js)  — target worksheet · report builder
 │  ├─ codec/   sieve/      # workbench (kit.js)  — codecs/inspector · oracle tracker
-│  └─ ledger/              # workbench (kit.js)  — cross-tool campaign ASR dashboard
-├─ test/                   # minidom.js + run.js — the 49-check suite
+│  └─ ledger/  verdict/    # workbench (kit.js)  — campaign ASR · response scorer
+├─ test/                   # minidom.js + run.js — the 51-check suite
 └─ .github/workflows/      # CI: npm test + the no-network assertion
 ```
 

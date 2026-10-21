@@ -48,8 +48,17 @@ icon.b9logo=function(opts){
 };
 icon.setFavicon=function(name,color){
   try{
-    var svg=icon(name,{size:32,stroke:2}).replace('stroke="currentColor"','stroke="'+(color||"#b23a3a")+'"');
-    var xml='<svg xmlns="http://www.w3.org/2000/svg"'+svg.slice(4);
+    var xml;
+    if(name==="b9logo"){
+      /* two-tone interlocking monogram with fixed colors (favicons can't resolve CSS vars) */
+      var c1=color||"#b23a3a", c2="#8a2626";
+      xml='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 56" fill="none" stroke-linecap="round" stroke-linejoin="round">'+
+        '<path d="M35 28C11 28 11 48 35 48" stroke="'+c2+'" stroke-width="6"/>'+
+        '<path d="M35 8V48 M35 8C12 8 12 28 35 28" stroke="'+c1+'" stroke-width="6"/></svg>';
+    } else {
+      var svg=icon(name,{size:32,stroke:2}).replace('stroke="currentColor"','stroke="'+(color||"#b23a3a")+'"');
+      xml='<svg xmlns="http://www.w3.org/2000/svg"'+svg.slice(4);
+    }
     var href="data:image/svg+xml,"+encodeURIComponent(xml);
     var l=document.querySelector('link[rel="icon"]');
     if(!l){ l=document.createElement("link"); l.rel="icon"; document.head.appendChild(l); }

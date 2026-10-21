@@ -5,8 +5,8 @@
 ![offline](https://img.shields.io/badge/offline-file%3A%2F%2F-2b7a4b?style=flat-square)
 ![dependencies](https://img.shields.io/badge/dependencies-0-555?style=flat-square)
 ![stack](https://img.shields.io/badge/stack-vanilla_JS-b23a3a?style=flat-square)
-![tests](https://img.shields.io/badge/tests-51_passing-2b7a4b?style=flat-square)
-![tools](https://img.shields.io/badge/tools-8-7a4a8c?style=flat-square)
+![tests](https://img.shields.io/badge/tests-53_passing-2b7a4b?style=flat-square)
+![tools](https://img.shields.io/badge/tools-9-7a4a8c?style=flat-square)
 
 ![B9 workflow](docs/overview.svg)
 
@@ -23,6 +23,7 @@ In one line: **the bookkeeping-and-methodology layer around manual red-teaming.*
 | ① | **Recon** | `RECON://scope` | Fingerprint the target's defense stack — identity, system prompt, guardrail topology, capabilities, obfuscation channels — and get a **live decision-tree opening move**. The recon worksheet, turned into a plan. |
 | ② | **Facet** | `FACET://lab` | Re-express your own benign payload along four neutral linguistic axes (verb/term · register · mood · abstraction) to **map which wording a model reacts to**. Transform-only; a neutral lexicon is the safety boundary. |
 | ③ | **Salvo** | `SALVO://variant-lab` | **Best-of-N.** Fire many small, *seeded* perturbations of a base payload (11 strategies) and track the per-variant hit rate to catch the low-probability success. |
+| ⇡ | **Climb** | `CLIMB://crescendo` | **Multi-turn — the strongest lever.** Plan a Crescendo escalation turn by turn (benign entry → anchor to the model's own words → the goal as a continuation), track what poisoned the context, and backtrack or branch. |
 | ④ | **Dossier** | `DOSSIER://report` | Turn logged attempts into a **submission-ready disclosure** (OWASP LLM07 / MITRE ATLAS): steps, impact, negative results, and the valid-finding gates checklist. Imports a Salvo/Facet export as evidence. |
 | ◇ | **Codec** | `CODEC://bench` | Reversible encode/decode bench (Base64, hex, binary, URL, ROT13, Caesar, Atbash, reverse, Morse, NATO, leet) with a round-trip self-test — plus a **defensive hidden-Unicode inspector** that detects & strips zero-width / bidi / Tags-block / homoglyph carriers from untrusted text. |
 | ◇ | **Sieve** | `SIEVE://oracle` | Client-side **oracle tracker** for authorized extraction of a benign lab secret: log closed-ended answers (boolean / range / code-point), reconstruct the value in a position table, and **stop the moment it validates**. |
@@ -69,7 +70,7 @@ Copy → paste into the Arena chat yourself → log the result → repeat. Pane 
 A dependency-free Node suite drives the real tools through a hand-rolled DOM — mount, generate, log, undo, persist, reload, export, import, keyboard loop, theme sync, and every workbench tool's pure logic:
 
 ```bash
-npm test     # → 51 checks, 0 deps
+npm test     # → 53 checks, 0 deps
 ```
 
 ---
@@ -87,7 +88,8 @@ B9/
 │  ├─ icons.js             # inline SVG glyphs + the interlocking B9 logo
 │  └─ logo.svg             # standalone brand mark
 ├─ tools/
-│  ├─ salvo/   facet/      # trackers  (core.js) — Best-of-N · reframing
+│  ├─ salvo/   facet/      # attack    (core.js) — Best-of-N · reframing
+│  ├─ climb/               # attack    (kit.js)  — multi-turn Crescendo planner
 │  ├─ recon/   dossier/    # workbench (kit.js)  — target worksheet · report builder
 │  ├─ codec/   sieve/      # workbench (kit.js)  — codecs/inspector · oracle tracker
 │  └─ ledger/  verdict/    # workbench (kit.js)  — campaign ASR · response scorer

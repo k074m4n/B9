@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 48 48" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-label="B9">
+<svg xmlns="http://www.w3.org/2000/svg" width="116" height="125" viewBox="0 0 52 56" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-label="B9">
   <!-- B and 9 interlock: shared right spine + shared upper loop; the lower bowl completes the B -->
-  <path d="M31 7V41 M31 7C11 7 11 24 31 24" stroke="#b23a3a" stroke-width="5"/>
-  <path d="M31 24C11 24 11 41 31 41" stroke="#8a2626" stroke-width="5"/>
+  <path d="M35 28C11 28 11 48 35 48" stroke="#8a2626" stroke-width="6"/>
+  <path d="M35 8V48 M35 8C12 8 12 28 35 28" stroke="#b23a3a" stroke-width="6"/>
 </svg>

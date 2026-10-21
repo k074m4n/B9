@@ -37,10 +37,14 @@ icon.has=function(n){ return !!P[n]; };
    Two tones: c1 = the "9" (spine + upper loop), c2 = the bowl that completes the "B". */
 icon.b9logo=function(opts){
   opts=opts||{};
-  var s=opts.size||40, sw=opts.stroke||5, c1=opts.c1||"var(--accent)", c2=opts.c2||"var(--accent-dim)";
-  return '<svg class="b9logo" width="'+s+'" height="'+s+'" viewBox="0 0 48 48" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-label="B9">'+
-    '<path d="M31 7V41 M31 7C11 7 11 24 31 24" stroke="'+c1+'" stroke-width="'+sw+'"/>'+
-    '<path d="M31 24C11 24 11 41 31 41" stroke="'+c2+'" stroke-width="'+sw+'"/></svg>';
+  var s=opts.size||48, sw=opts.stroke||6, c1=opts.c1||"var(--accent)", c2=opts.c2||"var(--accent-dim)";
+  /* viewBox 0 0 52 56. The "B" bowl (c2) is drawn first so the accent "9"
+     (spine + rounder upper loop, c1) sits on top at the shared junctions —
+     reading as one mark where the two letters interlock and complete each other. */
+  return '<svg class="b9logo" width="'+s+'" height="'+(Math.round(s*56/52))+'" viewBox="0 0 52 56" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-label="B9">'+
+    '<path d="M35 28C11 28 11 48 35 48" stroke="'+c2+'" stroke-width="'+sw+'"/>'+
+    '<path d="M35 8V48 M35 8C12 8 12 28 35 28" stroke="'+c1+'" stroke-width="'+sw+'"/>'+
+    '</svg>';
 };
 icon.setFavicon=function(name,color){
   try{

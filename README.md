@@ -1,4 +1,4 @@
-<img src="shared/logo.svg" alt="B9" width="72" align="left">
+<img src="shared/logo.svg" alt="B9" width="88" align="left">
 
 # B9 — AI red-teaming toolkit
 

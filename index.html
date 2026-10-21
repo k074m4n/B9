@@ -36,9 +36,9 @@
 .topbar .brand .b9ico{color:var(--accent)}
 /* hero */
 .hero{display:flex;align-items:center;gap:16px;margin:18px 2px 26px}
-.hero .mark{flex:none;width:58px;height:58px;display:flex;align-items:center;justify-content:center;
+.hero .mark{flex:none;width:86px;height:86px;display:flex;align-items:center;justify-content:center;
   border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);color:var(--accent);box-shadow:var(--paper-shadow)}
-.hero .mark .b9ico{width:34px;height:34px}
+.hero .mark .b9logo{display:block}
 .hero .meta{min-width:0}
 .hero .stats{margin-top:8px;display:flex;gap:7px;flex-wrap:wrap}
 .hero .stats .s{font-size:var(--fs-xs);color:var(--fg-dim);border:1px solid var(--line);background:var(--surface);
@@ -158,7 +158,7 @@
   };
   if(window.B9ICON){
     document.getElementById("brandIco").innerHTML=B9ICON("b9",{size:17});
-    document.getElementById("heroMark").innerHTML=B9ICON.b9logo({size:38});
+    document.getElementById("heroMark").innerHTML=B9ICON.b9logo({size:58});
     Array.prototype.forEach.call(document.querySelectorAll(".tool[data-icon]"),function(c){
       c.querySelector(".ico").innerHTML=B9ICON(c.dataset.icon,{size:25});
     });

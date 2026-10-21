@@ -1,12 +1,12 @@
 # <img src="shared/logo.svg" alt="B9" height="70" align="middle"> &nbsp;B9 — AI red-teaming Swiss knife
 
-> Ten offline tools to **map, break, defend, and report** how an LLM fails — without a single network request.
+> Eleven offline tools to **map, break, defend, and report** how an LLM fails — without a single network request.
 
 ![offline](https://img.shields.io/badge/offline-file%3A%2F%2F-2b7a4b?style=flat-square)
 ![dependencies](https://img.shields.io/badge/dependencies-0-555?style=flat-square)
 ![stack](https://img.shields.io/badge/stack-vanilla_JS-b23a3a?style=flat-square)
-![tests](https://img.shields.io/badge/tests-61_passing-2b7a4b?style=flat-square)
-![tools](https://img.shields.io/badge/tools-10-7a4a8c?style=flat-square)
+![tests](https://img.shields.io/badge/tests-65_passing-2b7a4b?style=flat-square)
+![tools](https://img.shields.io/badge/tools-11-7a4a8c?style=flat-square)
 
 ![B9 workflow](docs/overview.svg)
 
@@ -30,8 +30,9 @@ In one line: **the bookkeeping-and-methodology layer around manual red-teaming.*
 | ◇ | **Sieve** | `SIEVE://oracle` | Client-side **oracle tracker** for authorized extraction of a benign lab secret: log closed-ended answers (boolean / range / code-point), reconstruct the value in a position table, and **stop the moment it validates**. |
 | ◇ | **Ledger** | `LEDGER://campaign` | **Cross-tool campaign dashboard.** Import Salvo/Facet exports and aggregate ASR by **MLCommons family** and class across targets — with a 95% lower bound, a best-of-N estimate, and a "3 refusals → rotate the class" signal. |
 | ◇ | **Verdict** | `VERDICT://score` | **Honest response scorer.** Grade a model reply against the scenario's *exact* success condition — refusal vs **jailbreak-tax** (complied but useless) vs real success — and get the result to log. "Didn't refuse" is not a win (StrongREJECT). |
+| ◇ | **Atlas** | `ATLAS://method` | **Methodology reference.** A searchable deck of the taxonomies (MLCommons families · OWASP LLM/Agentic · MITRE ATLAS), techniques, defenses, and doctrine behind the kit — each entry cross-linked to the tool that applies it. A map, not a payload library. |
 
-**The loop:** `Recon` maps the defenses → `Facet` finds the framing that works → `Salvo` perturbs it Best-of-N to raise the hit rate → `Dossier` writes it up. `Codec`, `Lens`, and `Sieve` are the workbench you reach for mid-hunt — `Lens` is also where you verify your own defenses hold.
+**The loop:** `Recon` maps the defenses → `Facet` finds the framing that works → `Salvo` perturbs it Best-of-N to raise the hit rate → `Dossier` writes it up. `Codec`, `Lens`, and `Sieve` are the workbench you reach for mid-hunt — `Lens` is also where you verify your own defenses hold, and `Atlas` is the methodology map underneath it all.
 
 ---
 
@@ -71,7 +72,7 @@ Copy → paste into the Arena chat yourself → log the result → repeat. Pane 
 A dependency-free Node suite drives the real tools through a hand-rolled DOM — mount, generate, log, undo, persist, reload, export, import, keyboard loop, theme sync, and every workbench tool's pure logic:
 
 ```bash
-npm test     # → 61 checks, 0 deps
+npm test     # → 65 checks, 0 deps
 ```
 
 ---
@@ -93,9 +94,9 @@ B9/
 │  ├─ climb/               # attack    (kit.js)  — multi-turn Crescendo planner
 │  ├─ recon/   dossier/    # workbench (kit.js)  — target worksheet · report builder
 │  ├─ codec/   lens/       # workbench (kit.js)  — reversible codecs · defensive bench
-│  ├─ sieve/               # workbench (kit.js)  — oracle extraction tracker
+│  ├─ sieve/   atlas/      # workbench (kit.js)  — oracle tracker · methodology reference
 │  └─ ledger/  verdict/    # workbench (kit.js)  — campaign ASR · response scorer
-├─ test/                   # minidom.js + run.js — the 61-check suite
+├─ test/                   # minidom.js + run.js — the 65-check suite
 └─ .github/workflows/      # CI: npm test + the no-network assertion
 ```
 

@@ -190,6 +190,13 @@ function ls(key){ try{ return JSON.parse(global.localStorage.getItem(key)); }cat
   ok("Lens: spotlight delimits / datamarks / encodes", /UNTRUSTED_DATA/.test(LN.spotlight("x","delimit")) && LN.spotlight("a b","datamark")==="a^b" && LN.spotlight("hi","encode")==="aGk=");
   ok("Lens: clean text yields no findings", LN.scanSinks("normal.").length===0 && LN.scanInjections("thanks").length===0 && LN.scanUnicode("plain").length===0);
 
+  loadWorkbench("tools/atlas/index.html");
+  const AT=window.ATLAS;
+  ok("Atlas: corpus covers all four categories", AT.categories.every(c=>AT.entries.some(e=>e.cat===c)) && AT.entries.length>=25);
+  ok("Atlas: filter by query matches name + body + tags", AT.filter("crescendo","all").some(e=>e.id==="t-crescendo") && AT.filter("markdown","all").some(e=>e.id==="t-echoleak"));
+  ok("Atlas: category filter narrows + empty query returns all", AT.filter("","Defense").every(e=>e.cat==="Defense") && AT.filter("","all").length===AT.entries.length);
+  ok("Atlas: every tool link points at a real tool key", AT.entries.filter(e=>e.tool).every(e=>["recon","facet","salvo","climb","dossier","codec","lens","sieve","ledger","verdict"].indexOf(e.tool)>=0));
+
   loadWorkbench("tools/ledger/index.html");
   const LG=window.LEDGER;
   ok("Ledger: familyOf maps Salvo + Facet tags", LG.familyOf("case")==="Perturbation" && LG.familyOf("register:formal")==="Overt Carriers" && LG.familyOf("mood:x")==="Composition & Ordering" && LG.familyOf("approx")===null);

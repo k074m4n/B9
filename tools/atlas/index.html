@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Atlas · B9</title>
+<meta name="description" content="Offline methodology reference for AI red-teaming: MLCommons families, OWASP LLM/Agentic top-tens, MITRE ATLAS, and the core techniques, defenses, and doctrine — each cross-linked to the B9 tool that applies it. Local only, nothing sent.">
+<link rel="stylesheet" href="../../shared/theme.css">
+<script>try{var t=localStorage.getItem("b9.hub.theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+<style>
+.wrap{max-width:1040px;margin:0 auto;padding:var(--gap);width:100%}
+.controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.controls .search{flex:1 1 240px;min-width:0}
+.chips-filter{display:flex;gap:6px;flex-wrap:wrap}
+.fchip{background:var(--surface);border:1px solid var(--line);color:var(--fg-dim);border-radius:999px;padding:5px 12px;font-family:var(--font);font-size:var(--fs-sm);cursor:pointer}
+.fchip.on{border-color:var(--accent);color:var(--accent)}
+.count{color:var(--fg-dim);font-size:var(--fs-sm);margin-bottom:10px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.entry{border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);padding:14px;display:flex;flex-direction:column;gap:8px}
+.entry .top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.cat{font-size:9px;text-transform:uppercase;letter-spacing:1px;padding:2px 7px;border-radius:var(--radius-sm);border:1px solid currentColor;flex:none}
+.cat.Taxonomy{color:var(--chip-cyan)} .cat.Technique{color:var(--r-fail)}
+.cat.Defense{color:var(--r-success)} .cat.Doctrine{color:var(--chip-violet)}
+.entry h3{margin:0;font-size:15px;color:var(--fg);flex:1 1 auto;min-width:0}
+.entry .fam{font-size:var(--fs-xs);color:var(--fg-dim);font-family:var(--mono)}
+.entry p{margin:0;font-size:var(--fs-sm);color:var(--fg-dim);line-height:1.5}
+.entry .tags{display:flex;gap:5px;flex-wrap:wrap}
+.entry .tag{font-size:10px;color:var(--fg-dim);background:var(--bg-2);border:1px solid var(--line-soft);border-radius:var(--radius-sm);padding:1px 6px;font-family:var(--mono)}
+.entry .lnk{margin-top:auto}
+.entry .lnk a{color:var(--accent);text-decoration:none;font-size:var(--fs-sm)}
+.entry .lnk a:hover{text-decoration:underline}
+.empty{color:var(--fg-dim);text-align:center;padding:40px 0;font-size:var(--fs-sm)}
+mark{background:var(--accent);color:var(--bg);border-radius:2px;padding:0 1px}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="topbar">
+    <a class="home-link" href="../../index.html">B9</a>
+    <span class="brand hasico"><span id="brandIco"></span>ATLAS://method<span class="caret">_</span></span>
+    <span class="spacer"></span>
+    <span class="badge-offline">offline</span>
+    <button class="btn tb-btn" id="themeBtn" title="Toggle theme">◐</button>
+  </div>
+
+  <div class="wrap">
+    <div class="banner info show" style="position:static;border:1px solid var(--line);border-radius:var(--radius);margin-bottom:var(--gap)">
+      The methodology behind the kit — taxonomies, techniques, defenses, and doctrine, each linked to the B9 tool that applies it. A reference, not a payload library: nothing here is operational and nothing is sent.
+    </div>
+
+    <div class="controls">
+      <input class="input search" id="q" placeholder="Search — e.g. crescendo, injection, output, rotate…">
+      <div class="chips-filter" id="cats"></div>
+    </div>
+    <div class="count" id="count"></div>
+    <div class="grid" id="grid"></div>
+  </div>
+</div>
+
+<script src="../../shared/icons.js"></script>
+<script src="../../shared/kit.js"></script>
+<script>
+"use strict";
+(function(){
+var K=window.B9KIT, esc=K.esc;
+
+/* B9 tool targets (relative from tools/atlas/) */
+var TOOLS={
+  recon:{label:"Recon",href:"../recon/index.html"},
+  facet:{label:"Facet",href:"../facet/index.html"},
+  salvo:{label:"Salvo",href:"../salvo/index.html"},
+  climb:{label:"Climb",href:"../climb/index.html"},
+  dossier:{label:"Dossier",href:"../dossier/index.html"},
+  codec:{label:"Codec",href:"../codec/index.html"},
+  lens:{label:"Lens",href:"../lens/index.html"},
+  sieve:{label:"Sieve",href:"../sieve/index.html"},
+  ledger:{label:"Ledger",href:"../ledger/index.html"},
+  verdict:{label:"Verdict",href:"../verdict/index.html"}
+};
+
+var CATS=["Taxonomy","Technique","Defense","Doctrine"];
+
+/* ---- the reference corpus (abstract methodology only) ---- */
+var ENTRIES=[
+  /* Taxonomies */
+  {id:"mlc-perturb",cat:"Taxonomy",name:"MLCommons · Perturbation",family:"Perturbation",tags:["mlcommons","surface"],
+   body:"Surface-level edits that keep the meaning but change the bytes: case jitter, whitespace, punctuation, benign synonym swaps. Cheap probes for brittle input matching.",tool:"salvo"},
+  {id:"mlc-compose",cat:"Taxonomy",name:"MLCommons · Composition & Ordering",family:"Composition & Ordering",tags:["mlcommons","structure"],
+   body:"Restructuring the request: reordering independent parts, delimiter/role framing, template slots, priming an opener, suppressing refusal language. The scaffolding around the ask, not the ask itself.",tool:"salvo"},
+  {id:"mlc-encode",cat:"Taxonomy",name:"MLCommons · Encoding Abuse",family:"Encoding Abuse",tags:["mlcommons","obfuscation"],
+   body:"Carrying the request through a transform a model can still read but a naive filter cannot: Base64, ROT13, leetspeak, zero-width insertion, homoglyphs. Changes the literal surface entirely.",tool:"codec"},
+  {id:"mlc-carrier",cat:"Taxonomy",name:"MLCommons · Overt Carriers",family:"Overt Carriers",tags:["mlcommons","framing"],
+   body:"Plain-language envelopes: a politeness frame, a persona or role prefix, an authority or task framing that makes the request read as routine.",tool:"facet"},
+  {id:"owasp-llm01",cat:"Taxonomy",name:"OWASP LLM01 · Prompt Injection",family:null,tags:["owasp","injection","direct","indirect"],
+   body:"Untrusted input steering the model against its instructions — directly in the user turn, or indirectly via retrieved documents, tool output, or files the model reads as context (XPIA).",tool:"lens"},
+  {id:"owasp-llm02",cat:"Taxonomy",name:"OWASP LLM02 · Sensitive Information Disclosure",family:null,tags:["owasp","leak","pii"],
+   body:"The model revealing secrets, system-prompt content, training data, or other users' data. The impact half of many findings — pair an injection with an exfil channel.",tool:"sieve"},
+  {id:"owasp-llm05",cat:"Taxonomy",name:"OWASP LLM05 · Improper Output Handling",family:null,tags:["owasp","xss","sink"],
+   body:"Downstream systems trusting model output verbatim — rendering markdown images/links, executing returned code, or passing it to a shell. The output-side attack surface.",tool:"lens"},
+  {id:"owasp-llm06",cat:"Taxonomy",name:"OWASP LLM06 · Excessive Agency",family:null,tags:["owasp","agent","tools"],
+   body:"An agent with more permission, autonomy, or tool reach than the task needs. One planted instruction can turn into a real action when the agent auto-acts on retrieved content.",tool:"recon"},
+  {id:"owasp-llm07",cat:"Taxonomy",name:"OWASP LLM07 · System Prompt Leakage",family:null,tags:["owasp","sysprompt","disclosure"],
+   body:"Extraction of the hidden instructions, rules, or secrets in the system prompt. Often the first objective of recon — and the disclosure frame for the write-up.",tool:"dossier"},
+  {id:"owasp-asi",cat:"Taxonomy",name:"OWASP Agentic (ASI) threats",family:null,tags:["owasp","agentic","asi"],
+   body:"The Agentic Security Initiative threat set — memory poisoning, tool misuse, privilege compromise, cascading multi-agent failures. The agent-era extension of the LLM top-ten.",tool:"recon"},
+  {id:"mitre-atlas",cat:"Taxonomy",name:"MITRE ATLAS",family:null,tags:["mitre","tactics","adversarial"],
+   body:"The adversarial-ML tactic/technique matrix (recon → access → execution → exfiltration → impact). Use its IDs to label a finding so it lines up with defenders' threat models.",tool:"dossier"},
+
+  /* Techniques */
+  {id:"t-crescendo",cat:"Technique",name:"Crescendo (multi-turn)",family:"Composition & Ordering",tags:["multi-turn","escalation","context"],
+   body:"Start benign, anchor to the model's own earlier words, then ask for the goal as a small continuation. The single strongest lever against deep safety — each turn stays innocuous, the context does the work.",tool:"climb"},
+  {id:"t-prefill",cat:"Technique",name:"Prefix / prefill opener",family:"Composition & Ordering",tags:["prefill","continuation","priming"],
+   body:"Seed a compliant opening (\"Sure, here is…\") as the assistant's first words or the lead of the reply, so the model continues rather than decides. Cheapest high-yield structural move where prefill is allowed.",tool:"salvo"},
+  {id:"t-suppress",cat:"Technique",name:"Refusal suppression",family:"Composition & Ordering",tags:["refusal","constraints"],
+   body:"Constrain the format so refusal language has no place — no disclaimers, no hedging, answer directly. A structural wrapper, strongest when stacked with an opener and a frame.",tool:"salvo"},
+  {id:"t-bestofn",cat:"Technique",name:"Best-of-N sampling",family:"Perturbation",tags:["sampling","variance","asr"],
+   body:"Fire many small seeded variations of one base and keep the hit rate — a low per-shot probability still lands across N tries. Report the per-variant ASR, not a single lucky hit.",tool:"salvo"},
+  {id:"t-encoding",cat:"Technique",name:"Encoding abuse",family:"Encoding Abuse",tags:["base64","rot13","leet","zero-width"],
+   body:"Wrap the ask in a reversible transform the model decodes but a classifier skips. Recon signal: whether the target round-trips the encoding cleanly tells you if the branch is open.",tool:"codec"},
+  {id:"t-homoglyph",cat:"Technique",name:"Homoglyph / confusables",family:"Encoding Abuse",tags:["unicode","confusable","cyrillic"],
+   body:"Swap Latin letters for look-alike code points (Cyrillic а/е/о…). Visually identical, byte-different — defeats literal matching, visible to a normalizer. Inspect the reverse with Lens.",tool:"lens"},
+  {id:"t-lowres",cat:"Technique",name:"Low-resource language",family:"Encoding Abuse",tags:["translation","multilingual"],
+   body:"Carry the request through a language where safety training is thinner, then translate back. Recon first: confirm the target round-trips that language cleanly.",tool:"facet"},
+  {id:"t-reframe",cat:"Technique",name:"Linguistic reframing",family:"Overt Carriers",tags:["register","mood","abstraction"],
+   body:"Re-express the same benign payload along neutral axes — verb/term, register, mood, abstraction — to map which wording a model reacts to. Transform-only; a neutral lexicon is the safety boundary.",tool:"facet"},
+  {id:"t-xpia",cat:"Technique",name:"Indirect prompt injection (XPIA)",family:"Composition & Ordering",tags:["indirect","rag","tool-output","agent"],
+   body:"Plant the instruction in a channel the model treats as data — a retrieved doc, tool output, an email, a web page — so it reads as its own context. Often far easier than fighting the input filter.",tool:"recon"},
+  {id:"t-echoleak",cat:"Technique",name:"EchoLeak (zero-click exfil)",family:"Composition & Ordering",tags:["exfil","markdown-image","zero-click"],
+   body:"Combine an indirect injection with an auto-rendered egress — a markdown image or link pointing at an attacker URL — so private context leaks the moment the output renders, with no user action.",tool:"lens"},
+  {id:"t-oracle",cat:"Technique",name:"Oracle extraction",family:null,tags:["side-channel","reconstruct","closed-ended"],
+   body:"Recover a hidden value through closed-ended questions the model will answer (boolean / range / code-point) and reconstruct it position by position. Stop the instant it validates.",tool:"sieve"},
+
+  /* Defenses */
+  {id:"d-spotlight",cat:"Defense",name:"Spotlighting",family:null,tags:["defense","delimit","datamark","encode"],
+   body:"Mark untrusted data so the model can tell it from instructions — delimiting, datamarking (interleave a token), or encoding the data. The standard mitigation against indirect injection; test whether your own prompts apply it.",tool:"lens"},
+  {id:"d-output",cat:"Defense",name:"Output sanitization",family:null,tags:["defense","sink","xss","encode"],
+   body:"Never trust model output in a sink: encode before rendering markdown/HTML, strip auto-fetching images and links, don't execute returned code. Scan a reply for the live sinks before you rely on it.",tool:"lens"},
+  {id:"d-normalize",cat:"Defense",name:"Unicode normalization",family:null,tags:["defense","strip","homoglyph","zero-width"],
+   body:"Strip and fold hidden carriers — zero-width, bidi, Tags-block, variation selectors, confusables — before the text reaches the model or a log. The counter to encoding/homoglyph carriers.",tool:"lens"},
+
+  /* Doctrine */
+  {id:"doc-rotate",cat:"Doctrine",name:"Class-rotation (3 → rotate)",family:null,tags:["doctrine","rotation","asr"],
+   body:"After ~3 refusals on one technique class, stop grinding it — rotate to a different family rather than re-rolling the same approach. Measured across the campaign, not one tool.",tool:"ledger"},
+  {id:"doc-tax",cat:"Doctrine",name:"Jailbreak-tax (StrongREJECT)",family:null,tags:["doctrine","scoring","strongreject"],
+   body:"\"Didn't refuse\" is not a win. Grade a reply against the exact success condition: a refusal is 0, and a compliance that is useless or off-target is the jailbreak-tax, not success.",tool:"verdict"},
+  {id:"doc-recon",cat:"Doctrine",name:"Recon-first decision tree",family:null,tags:["doctrine","planning","opening-move"],
+   body:"Read the defense stack before firing — classifier presence and depth, capabilities, obfuscation channels, agentic surfaces — and let the worksheet pick the opening move. Guessing wastes the cheapest tries.",tool:"recon"},
+  {id:"doc-disclose",cat:"Doctrine",name:"Responsible disclosure",family:null,tags:["doctrine","reporting","negative-results"],
+   body:"A finding is steps + impact + the valid-finding gates, framed for the defender (OWASP / ATLAS), with negative results included. The work ends in a write-up someone can act on, not a screenshot.",tool:"dossier"}
+];
+
+/* ---- pure filter (testable) ---- */
+function filter(q,cat){
+  q=(q||"").trim().toLowerCase();
+  return ENTRIES.filter(function(e){
+    if(cat && cat!=="all" && e.cat!==cat) return false;
+    if(!q) return true;
+    var hay=(e.name+" "+e.body+" "+(e.tags||[]).join(" ")+" "+(e.family||"")+" "+(e.tool||"")).toLowerCase();
+    return hay.indexOf(q)>=0;
+  });
+}
+window.ATLAS={entries:ENTRIES,categories:CATS,filter:filter};
+
+/* ---- DOM ---- */
+if(typeof document==="undefined" || !document.getElementById("grid")) return;
+var $=function(id){ return document.getElementById(id); };
+var state={q:"",cat:"all"};
+
+function hl(text){
+  var q=state.q.trim();
+  var out=esc(text);
+  if(q){ try{ var re=new RegExp("("+q.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+")","ig"); out=out.replace(re,"<mark>$1</mark>"); }catch(e){} }
+  return out;
+}
+function entryHTML(e){
+  var t=e.tool?TOOLS[e.tool]:null;
+  return '<div class="entry">'+
+    '<div class="top"><span class="cat '+e.cat+'">'+e.cat+'</span><h3>'+hl(e.name)+'</h3></div>'+
+    (e.family?'<div class="fam">'+esc(e.family)+'</div>':'')+
+    '<p>'+hl(e.body)+'</p>'+
+    '<div class="tags">'+(e.tags||[]).map(function(tg){ return '<span class="tag">'+hl(tg)+'</span>'; }).join("")+'</div>'+
+    (t?'<div class="lnk"><a href="'+t.href+'">→ '+t.label+'</a></div>':'')+
+  '</div>';
+}
+function render(){
+  var list=filter(state.q,state.cat);
+  $("count").textContent=list.length+" / "+ENTRIES.length+" entries"+(state.cat==="all"?"":" · "+state.cat)+(state.q?" · “"+state.q+"”":"");
+  $("grid").innerHTML=list.length?list.map(entryHTML).join(""):'';
+  if(!list.length) $("grid").innerHTML='<div class="empty">No entry matches that. Try a broader term, or clear the filter.</div>';
+}
+function renderCats(){
+  var all=[{k:"all",label:"All"}].concat(CATS.map(function(c){ return {k:c,label:c}; }));
+  $("cats").innerHTML=all.map(function(c){ return '<button class="fchip'+(state.cat===c.k?" on":"")+'" data-cat="'+c.k+'">'+c.label+'</button>'; }).join("");
+  Array.prototype.forEach.call($("cats").querySelectorAll("[data-cat]"),function(b){
+    b.onclick=function(){ state.cat=b.dataset.cat; renderCats(); render(); };
+  });
+}
+$("q").addEventListener("input",function(){ state.q=$("q").value; render(); });
+renderCats(); render();
+
+K.initTheme("themeBtn");
+if(window.B9ICON){ var bi=$("brandIco"); if(bi) bi.innerHTML=B9ICON("atlas",{size:16}); B9ICON.setFavicon("atlas"); }
+})();
+</script>
+</body>
+</html>

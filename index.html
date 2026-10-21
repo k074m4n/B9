@@ -72,7 +72,7 @@
         <h1>B9<span class="dot">.</span></h1>
         <div class="tag">AI red-teaming Swiss knife <span class="caret">_</span></div>
         <div class="stats">
-          <span class="s"><b>10</b> tools</span>
+          <span class="s"><b>11</b> tools</span>
           <span class="s">offline · <b>file://</b></span>
           <span class="s">local-only</span>
           <span class="s">manual-submission by design</span>
@@ -161,13 +161,20 @@
         <div class="chips"><span class="chip cyan">StrongREJECT</span><span class="chip violet">rubric</span><span class="chip amber">0–100 score</span></div>
         <span class="open">Open Verdict →</span>
       </a>
+
+      <a class="card tool" href="tools/atlas/index.html" data-icon="atlas">
+        <div class="thead"><span class="ico"></span><div class="tmeta"><span class="num">ATLAS</span><h2>Atlas</h2><div class="scheme">▸ ATLAS://method</div></div></div>
+        <p>The methodology behind the kit. A searchable reference of <b>taxonomies</b> (MLCommons · OWASP LLM/Agentic · MITRE ATLAS), <b>techniques</b>, <b>defenses</b>, and <b>doctrine</b> — each entry cross-linked to the B9 tool that applies it. A map, not a payload library.</p>
+        <div class="chips"><span class="chip cyan">taxonomy</span><span class="chip violet">technique</span><span class="chip amber">doctrine</span></div>
+        <span class="open">Open Atlas →</span>
+      </a>
     </div>
 
     <div class="note">
       <b>Scope.</b> B9 helps craft and bookkeep variations of text <b>you</b> write, for authorized testing on Gray Swan Arena. It never contacts any website, never auto-submits, and never guesses model identities (Arena Rules 3 &amp; 4). Every tool works opened straight from <code>file://</code> with the network unplugged; all data stays in your browser's local storage.
     </div>
     <div class="note" style="margin-top:8px">
-      <b>Shared system.</b> Every tool shares one theme (<code>shared/theme.css</code>). The attempt-trackers (Facet, Salvo) run on one engine (<code>shared/core.js</code>) — identical variant queue, stats, export and keyboard loop (<kbd>c</kbd> copy, <kbd>1</kbd>–<kbd>4</kbd>/<kbd>0</kbd> log, <kbd>u</kbd> undo, <kbd>j</kbd>/<kbd>k</kbd> move). The workbench tools (Recon, Codec, Lens, Sieve, Dossier) share lightweight plumbing (<code>shared/kit.js</code>). Dossier imports a Salvo/Facet JSON export, so the loop ends in a finished write-up.
+      <b>Shared system.</b> Every tool shares one theme (<code>shared/theme.css</code>). The attempt-trackers (Facet, Salvo) run on one engine (<code>shared/core.js</code>) — identical variant queue, stats, export and keyboard loop (<kbd>c</kbd> copy, <kbd>1</kbd>–<kbd>4</kbd>/<kbd>0</kbd> log, <kbd>u</kbd> undo, <kbd>j</kbd>/<kbd>k</kbd> move). The workbench tools (Recon, Codec, Lens, Sieve, Dossier, Atlas) share lightweight plumbing (<code>shared/kit.js</code>). Dossier imports a Salvo/Facet JSON export, so the loop ends in a finished write-up.
     </div>
   </div>
 

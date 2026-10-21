@@ -190,6 +190,9 @@ function mountTool(spec){
   function activeProject(){ return state.projects.find(function(p){return p.id===state.activeProjectId;})||null; }
 
   /* ---------- DOM shell ---------- */
+  /* apply the shared platform theme immediately (before the shell renders) so a
+     tool opened from a dark hub doesn't flash light. */
+  try{ var _sharedTheme=localStorage.getItem("b9.hub.theme"); if(_sharedTheme) document.documentElement.setAttribute("data-theme",_sharedTheme); }catch(e){}
   var root=document.getElementById("app") || document.body;
   var homeHref=spec.homeHref||"../../index.html";
   root.innerHTML=
@@ -648,7 +651,8 @@ function mountTool(spec){
   }
 
   /* ---------- theme / tabs / help / projects ---------- */
-  function applyTheme(t){ document.documentElement.setAttribute("data-theme",t); state.settings.theme=t; save(); }
+  function applyTheme(t){ document.documentElement.setAttribute("data-theme",t); state.settings.theme=t;
+    try{ localStorage.setItem("b9.hub.theme",t); }catch(e){} save(); }
   function toggleTheme(){ applyTheme(state.settings.theme==="dark"?"light":"dark"); }
   function switchTab(t){
     activeTab=t;
@@ -736,7 +740,9 @@ function mountTool(spec){
     });
   }
 
-  load(); renderAll(); bindTop(); bindKeys(); switchTab("A");
+  load();
+  try{ var _bt=localStorage.getItem("b9.hub.theme"); if(_bt==="dark"||_bt==="light") state.settings.theme=_bt; }catch(e){}  // honor the shared platform theme
+  renderAll(); bindTop(); bindKeys(); switchTab("A");
   if(spec.bannerText) showBanner(spec.bannerText,"info");
   if(window.B9ICON && spec.icon){
     var bi=document.getElementById("b9brandico"); if(bi) bi.innerHTML=window.B9ICON(spec.icon,{size:16});

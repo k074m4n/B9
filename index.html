@@ -6,6 +6,7 @@
 <title>B9 · AI red-teaming toolkit</title>
 <meta name="description" content="B9 — an offline toolkit of AI red-teaming helpers for authorized Arena testing. No network, no submission; everything runs locally in your browser.">
 <link rel="stylesheet" href="shared/theme.css">
+<script>try{var t=localStorage.getItem("b9.hub.theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
 <style>
 /* hub-only layout (inherits matte Carbon tokens from theme.css) */
 .hub{max-width:980px;margin:0 auto;padding:28px 16px 60px;width:100%}
@@ -157,7 +158,7 @@
     try{ localStorage.setItem(KEY,cur); }catch(e){}
   };
   if(window.B9ICON){
-    document.getElementById("brandIco").innerHTML=B9ICON("b9",{size:17});
+    document.getElementById("brandIco").innerHTML=B9ICON.b9logo({size:16});
     document.getElementById("heroMark").innerHTML=B9ICON.b9logo({size:58});
     Array.prototype.forEach.call(document.querySelectorAll(".tool[data-icon]"),function(c){
       c.querySelector(".ico").innerHTML=B9ICON(c.dataset.icon,{size:25});

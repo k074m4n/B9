@@ -13,7 +13,10 @@ let SPEC=null; window.B9.mountTool=(s)=>{SPEC=s;};
 
 function inlineScript(file){
   const html=fs.readFileSync(path.join(ROOT,file),"utf8");
-  return [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m=>m[1]).filter(s=>s.trim())[0];
+  // the main tool script is the longest inline <script> (pages also have a tiny
+  // head early-theme-apply script that must be ignored)
+  return [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m=>m[1]).filter(s=>s.trim())
+    .sort((a,b)=>b.length-a.length)[0];
 }
 let pass=0, fail=0;
 function ok(name,cond){ (cond?pass++:fail++); console.log((cond?"  ok  ":"FAIL  ")+name); }
@@ -107,6 +110,12 @@ function ls(key){ try{ return JSON.parse(global.localStorage.getItem(key)); }cat
   let threw2=null; try{ remount(); }catch(e){ threw2=e; }
   ok("mounts with storage disabled", !threw2);
   ok("storage-unavailable banner shown", /Storage unavailable/.test($("banner").innerHTML));
+  global.localStorage=md.makeLocalStorage();
+
+  // shared platform theme: a tool opened from a dark hub mounts dark
+  global.localStorage.setItem("b9.hub.theme","dark");
+  remount();
+  ok("core tool honors shared hub theme (dark)", document.documentElement.getAttribute("data-theme")==="dark");
   global.localStorage=md.makeLocalStorage();
 
   /* ==================== FACET ==================== */

@@ -1,9 +1,4 @@
-<img src="shared/logo.svg" alt="B9" width="88" align="left">
-
-# B9 — AI red-teaming toolkit
-
-<br clear="left">
-
+# <img src="shared/logo.svg" alt="B9" height="34"> &nbsp;B9 — AI red-teaming toolkit
 
 B9 is an **offline, build-free** collection of helper tools for authorized AI red-teaming
 on Gray Swan Arena. Everything runs locally in the browser from `file://` — no backend,

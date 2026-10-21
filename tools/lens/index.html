@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lens · B9</title>
+<meta name="description" content="Offline defensive bench for AI red-teaming: inspect untrusted text for hidden Unicode, scan model output for XSS/exfil sinks, detect planted injections, and apply spotlighting defenses. Local only.">
+<link rel="stylesheet" href="../../shared/theme.css">
+<script>try{var t=localStorage.getItem("b9.hub.theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+<style>
+.wrap{max-width:1000px;margin:0 auto;padding:var(--gap);width:100%}
+.tabbar2{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.tab2{background:var(--surface);border:1px solid var(--line);color:var(--fg-dim);border-radius:var(--radius);padding:7px 12px;font-family:var(--font);font-size:var(--fs-sm);cursor:pointer}
+.tab2.on{border-color:var(--accent);color:var(--accent)}
+.io textarea{min-height:150px}
+.findings{font-family:var(--mono);font-size:var(--fs-sm);max-height:320px;overflow:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--bg-2);margin-top:8px}
+.find{display:flex;gap:8px;padding:7px 9px;border-bottom:1px solid var(--line-soft);align-items:flex-start}
+.find:last-child{border-bottom:none}
+.sev{font-size:9px;text-transform:uppercase;letter-spacing:1px;padding:1px 6px;border-radius:var(--radius-sm);border:1px solid currentColor;flex:none;margin-top:1px}
+.sev.high{color:var(--r-fail)} .sev.med{color:var(--r-partial)} .sev.info{color:var(--chip-cyan)}
+.find .ty{color:var(--fg);flex:none;min-width:150px}
+.find .sm{color:var(--r-refused);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.find .cp{color:var(--accent);min-width:74px}
+.opts{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.seg button{background:var(--surface);border:none;color:var(--fg-dim);padding:6px 11px;font-family:var(--font);font-size:var(--fs-sm);cursor:pointer}
+.seg button.on{background:var(--accent);color:var(--bg)}
+.ok{color:var(--r-success)} .bad{color:var(--r-fail)}
+.summary{font-size:var(--fs-sm);margin:8px 0}
+.paneT{display:none}.paneT.on{display:block}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="topbar">
+    <a class="home-link" href="../../index.html">B9</a>
+    <span class="brand hasico"><span id="brandIco"></span>LENS://defense<span class="caret">_</span></span>
+    <span class="spacer"></span>
+    <span class="badge-offline">offline</span>
+    <button class="btn tb-btn" id="themeBtn" title="Toggle theme">◐</button>
+  </div>
+
+  <div class="wrap">
+    <div class="banner info show" style="position:static;border:1px solid var(--line);border-radius:var(--radius);margin-bottom:var(--gap)">
+      Defensive bench — paste untrusted text (a doc, tool output, an email) or a model's reply, then inspect it. Nothing is sent anywhere.
+    </div>
+
+    <div class="card">
+      <label class="fld">text to inspect</label>
+      <textarea class="input textarea" id="inp" placeholder="Paste untrusted content / model output here…"></textarea>
+      <div class="tabbar2" style="margin-top:10px">
+        <button class="tab2 on" data-t="unicode">Hidden Unicode</button>
+        <button class="tab2" data-t="sinks">Output sinks (XSS / exfil)</button>
+        <button class="tab2" data-t="inject">Injection scan</button>
+        <button class="tab2" data-t="spotlight">Spotlight defense</button>
+      </div>
+
+      <div class="paneT on" id="p-unicode">
+        <div class="opts"><button class="btn" id="uScan">Scan</button><button class="btn" id="uStrip">Strip + normalize → copy</button><span class="summary" id="uSum"></span></div>
+        <div class="findings" id="uOut" style="display:none"></div>
+      </div>
+      <div class="paneT" id="p-sinks">
+        <div class="opts"><button class="btn" id="sScan">Scan output sinks</button><span class="summary" id="sSum"></span></div>
+        <div class="hint" style="margin-top:0">Flags what a browser/markdown renderer would auto-execute or auto-fetch from the model's output — the zero-click exfil &amp; XSS surface.</div>
+        <div class="findings" id="sOut" style="display:none"></div>
+      </div>
+      <div class="paneT" id="p-inject">
+        <div class="opts"><button class="btn" id="iScan">Scan for planted instructions</button><span class="summary" id="iSum"></span></div>
+        <div class="hint" style="margin-top:0">Detects instruction-like patterns in untrusted data (the indirect-injection / XPIA-style check): overrides, role/boundary forging, concealment, exfil wiring.</div>
+        <div class="findings" id="iOut" style="display:none"></div>
+      </div>
+      <div class="paneT" id="p-spotlight">
+        <div class="opts">
+          <span class="seg" id="spMode"><button data-m="delimit" class="on">delimit</button><button data-m="datamark">datamark</button><button data-m="encode">encode</button></span>
+          <button class="btn primary" id="spRun">Apply &amp; copy</button>
+          <span class="summary" id="spSum"></span>
+        </div>
+        <div class="hint" style="margin-top:0">Wrap untrusted data so a model can tell it from instructions — test your own app's defense (Hines et al. spotlighting).</div>
+        <textarea class="input textarea code" id="spOut" readonly style="margin-top:8px" placeholder="defended output appears here"></textarea>
+      </div>
+    </div>
+  </div>
+  <div class="footer"><b>Lens</b> · inspect untrusted text · detect sinks &amp; injections · test defenses · no data leaves this page</div>
+  <div id="toast"></div>
+</div>
+
+<script src="../../shared/icons.js"></script>
+<script src="../../shared/kit.js"></script>
+<script>
+"use strict";
+(function(){
+var K=window.B9KIT, esc=K.esc;
+
+/* ---- pure: hidden-Unicode inspection ---- */
+var HOMO_MAP={ "а":"a","е":"e","о":"o","с":"c","р":"p","х":"x","у":"y","і":"i","ј":"j","ѕ":"s","А":"A","В":"B","С":"C","Е":"E","Н":"H","К":"K","М":"M","О":"O","Р":"P","Т":"T","Х":"X" };
+function cpStr(ch){ return "U+"+ch.codePointAt(0).toString(16).toUpperCase().padStart(4,"0"); }
+function classify(ch){
+  var c=ch.codePointAt(0);
+  if(c===0x200B||c===0x200C||c===0x200D||c===0x2060||c===0xFEFF) return "zero-width";
+  if(c>=0x202A&&c<=0x202E) return "bidi override";
+  if(c>=0x2066&&c<=0x2069) return "bidi isolate";
+  if(c>=0xE0000&&c<=0xE007F) return "Unicode Tags";
+  if(c>=0xE000&&c<=0xF8FF) return "private use area";
+  if(c>=0xFE00&&c<=0xFE0F) return "variation selector";
+  if(c>=0x1D400&&c<=0x1D7FF) return "math alphanumeric";
+  if(HOMO_MAP[ch]) return "homoglyph (Cyrillic)";
+  return null;
+}
+function scanUnicode(text){
+  var hits=[], arr=Array.from(text||"");
+  for(var i=0;i<arr.length;i++){ var cat=classify(arr[i]); if(cat) hits.push({index:i,char:arr[i],cp:cpStr(arr[i]),category:cat}); }
+  return hits;
+}
+function strip(text){
+  var out=Array.from(text||"").map(function(ch){ var cat=classify(ch);
+    if(cat==="homoglyph (Cyrillic)") return HOMO_MAP[ch];
+    if(cat==="zero-width"||cat==="bidi override"||cat==="bidi isolate"||cat==="Unicode Tags"||cat==="private use area"||cat==="variation selector") return "";
+    return ch; }).join("");
+  try{ out=out.normalize("NFKC"); }catch(e){} return out;
+}
+
+/* ---- pure: output sink (XSS / exfil) scan ---- */
+var SINKS=[
+  {re:/!\[[^\]]*\]\((https?:\/\/[^)\s]+)\)/gi, type:"markdown auto-image", sev:"high", note:"auto-loaded on render → zero-click exfil (data can ride in the URL)"},
+  {re:/<img\b[^>]*\bsrc\s*=\s*["']?[^"'>\s]+/gi, type:"html <img src>", sev:"high", note:"auto-fetched on render → exfil channel"},
+  {re:/<script\b/gi, type:"<script>", sev:"high", note:"script injection (XSS) if output is rendered as HTML"},
+  {re:/\son[a-z]+\s*=/gi, type:"inline event handler", sev:"high", note:"onload/onerror/… → XSS in an HTML sink"},
+  {re:/javascript:/gi, type:"javascript: URI", sev:"high", note:"script execution via a link/src"},
+  {re:/<(iframe|object|embed)\b/gi, type:"iframe/object/embed", sev:"high", note:"embeds external/active content"},
+  {re:/data:(?!image\/(png|jpe?g|gif|webp);)[^"'\s)]+/gi, type:"data: URI", sev:"med", note:"can carry script (e.g. data:text/html / SVG) or exfil payload"},
+  {re:/^[ \t]*\[[^\]]+\]:\s*\S+/gim, type:"reference-style link def", sev:"med", note:"slips past naive link-redaction (EchoLeak lesson)"},
+  {re:/\[[^\]]*\]\((https?:\/\/[^)\s]+)\)/gi, type:"markdown link", sev:"med", note:"one-click exfil / off-domain navigation"}
+];
+function scanSinks(text){
+  text=text||""; var out=[];
+  SINKS.forEach(function(s){ s.re.lastIndex=0; var m; while((m=s.re.exec(text))){ out.push({type:s.type,sev:s.sev,sample:m[0].slice(0,80),note:s.note}); if(m.index===s.re.lastIndex) s.re.lastIndex++; } });
+  return out;
+}
+
+/* ---- pure: planted-instruction (injection) scan ---- */
+var INJ=[
+  {re:/ignore\s+(all\s+)?(the\s+)?(previous|above|prior|preceding)/gi, type:"override", sev:"high", note:"'ignore previous instructions' pattern"},
+  {re:/\b(assistant|system|user)\s*:/gi, type:"role / boundary forging", sev:"high", note:"fake turn / role marker inside data"},
+  {re:/\b(system note|orchestrator directive|reviewer notes?|policy note)\b/gi, type:"authority framing", sev:"high", note:"dresses data up as a privileged directive (fake control panel)"},
+  {re:/\bdo not (mention|tell|disclose|reveal|report|include)\b/gi, type:"concealment", sev:"high", note:"instruction to hide the action from the user (agent IPI win condition)"},
+  {re:/\b(you (must|should|will|need to)|please (ignore|disregard|output|send|fetch|print|reveal))\b/gi, type:"imperative to the model", sev:"med", note:"commands aimed at the assistant inside data"},
+  {re:/(?:decode|base64|rot13|from the following)\b[^\n]{0,40}(instruction|and (then )?(follow|proceed|comply))/gi, type:"decode-and-comply", sev:"med", note:"encoded-instruction wrapper"},
+  {re:/https?:\/\/[^\s)"']+\?[^\s)"']*=(?:[A-Za-z0-9+/=._-]{8,})/gi, type:"exfil-shaped URL", sev:"med", note:"URL with an encoded-looking parameter → possible data exfil"}
+];
+function scanInjections(text){
+  text=text||""; var out=[];
+  INJ.forEach(function(s){ s.re.lastIndex=0; var m; while((m=s.re.exec(text))){ out.push({type:s.type,sev:s.sev,sample:m[0].slice(0,80),note:s.note}); if(m.index===s.re.lastIndex) s.re.lastIndex++; } });
+  return out;
+}
+
+/* ---- pure: spotlighting defense ---- */
+function b64(s){ try{ return btoa(unescape(encodeURIComponent(s))); }catch(e){ return s; } }
+function spotlight(text,mode){
+  text=text||"";
+  if(mode==="datamark") return text.replace(/ /g,"^");
+  if(mode==="encode") return b64(text);
+  return "<<UNTRUSTED_DATA\n"+text+"\nUNTRUSTED_DATA>>";
+}
+window.LENS={scanUnicode:scanUnicode,strip:strip,classify:classify,scanSinks:scanSinks,scanInjections:scanInjections,spotlight:spotlight};
+
+/* ---- DOM ---- */
+if(typeof document==="undefined" || !document.getElementById("inp")) return;
+var $=function(id){ return document.getElementById(id); };
+var val=function(){ return $("inp").value; };
+
+/* tabs */
+Array.prototype.forEach.call(document.querySelectorAll(".tab2"),function(b){ b.onclick=function(){
+  Array.prototype.forEach.call(document.querySelectorAll(".tab2"),function(x){ x.classList.toggle("on",x===b); });
+  Array.prototype.forEach.call(document.querySelectorAll(".paneT"),function(p){ p.classList.toggle("on",p.id==="p-"+b.dataset.t); });
+}; });
+
+function findHTML(f){ return '<div class="find"><span class="sev '+f.sev+'">'+f.sev+'</span><span class="ty">'+esc(f.type)+'</span><span class="sm" title="'+esc(f.note)+'">'+esc(f.sample||"·")+'</span></div>'; }
+
+/* unicode */
+function uScan(){
+  var hits=scanUnicode(val());
+  $("uSum").innerHTML = hits.length ? '<span class="bad">'+hits.length+" suspicious char"+(hits.length>1?"s":"")+"</span>" : '<span class="ok">clean — no hidden/confusable characters</span>';
+  var box=$("uOut"); if(!hits.length){ box.style.display="none"; return; }
+  box.style.display="block";
+  box.innerHTML=hits.slice(0,500).map(function(h){ return '<div class="find"><span class="cp">'+h.cp+'</span><span class="ty">'+esc(h.category)+'</span><span class="sm">@'+h.index+(h.category.indexOf("homoglyph")===0?" "+esc(h.char):"")+'</span></div>'; }).join("");
+}
+$("uScan").onclick=uScan;
+$("uStrip").onclick=function(){ uScan(); K.copy(strip(val())); };
+
+/* sinks */
+$("sScan").onclick=function(){ var f=scanSinks(val());
+  $("sSum").innerHTML = f.length ? '<span class="bad">'+f.length+" sink"+(f.length>1?"s":"")+" found</span>" : '<span class="ok">no dangerous output sinks</span>';
+  var box=$("sOut"); box.style.display=f.length?"block":"none"; box.innerHTML=f.map(findHTML).join(""); };
+
+/* injections */
+$("iScan").onclick=function(){ var f=scanInjections(val());
+  $("iSum").innerHTML = f.length ? '<span class="bad">'+f.length+" instruction pattern"+(f.length>1?"s":"")+"</span>" : '<span class="ok">no planted-instruction patterns</span>';
+  var box=$("iOut"); box.style.display=f.length?"block":"none"; box.innerHTML=f.map(findHTML).join(""); };
+
+/* spotlight */
+var spMode="delimit";
+Array.prototype.forEach.call($("spMode").querySelectorAll("button"),function(b){ b.onclick=function(){ spMode=b.dataset.m; Array.prototype.forEach.call($("spMode").querySelectorAll("button"),function(x){ x.classList.toggle("on",x===b); }); }; });
+$("spRun").onclick=function(){ var o=spotlight(val(),spMode); $("spOut").value=o; K.copy(o); };
+
+K.initTheme("themeBtn");
+if(window.B9ICON){ var bi=$("brandIco"); if(bi) bi.innerHTML=B9ICON("lens",{size:16}); B9ICON.setFavicon("lens"); }
+})();
+</script>
+</body>
+</html>

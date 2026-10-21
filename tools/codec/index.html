@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Codec · B9</title>
-<meta name="description" content="Offline reversible encode/decode workbench + defensive hidden-Unicode inspector. Transforms your own text locally; no network.">
+<meta name="description" content="Offline reversible encode/decode workbench. Transforms your own text locally; no network.">
 <link rel="stylesheet" href="../../shared/theme.css">
 <script>try{var t=localStorage.getItem("b9.hub.theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
 <style>
@@ -43,7 +43,7 @@
       Local transform bench. Encode/decode your own text for recon (encode the ask · decode the model's reply). Nothing is sent anywhere.
     </div>
 
-    <div class="two">
+    <div>
       <div class="card">
         <h3 class="h-sec">Transform</h3>
         <div class="io">
@@ -68,24 +68,7 @@
         <div class="hint" id="selftestOut"></div>
       </div>
 
-      <div class="card">
-        <h3 class="h-sec">Hidden-Unicode inspector <span class="chip amber">defensive</span></h3>
-        <div class="hint" style="margin-top:0">Scan untrusted text (a pasted doc, tool output, an email) for invisible / confusable characters used to smuggle instructions past humans &amp; filters. Then strip or normalize them.</div>
-        <div class="io" style="margin-top:8px">
-          <label class="fld">text to inspect</label>
-          <textarea class="input textarea" id="insIn" placeholder="Paste text to inspect…"></textarea>
-        </div>
-        <div class="opts">
-          <button class="btn" id="scanBtn">Scan</button>
-          <button class="btn" id="stripBtn">Strip + normalize</button>
-          <span class="hint" id="scanSummary" style="margin:0"></span>
-        </div>
-        <div class="scan" id="scanOut" style="margin-top:8px;display:none"></div>
-        <div class="io" style="margin-top:8px">
-          <label class="fld">cleaned output <button class="linkbtn" id="copyClean">copy</button></label>
-          <textarea class="input textarea code" id="insOut" readonly placeholder="Stripped/normalized text appears here."></textarea>
-        </div>
-      </div>
+      <div class="hint" style="margin-top:12px">Inspecting untrusted text (hidden Unicode, XSS/exfil sinks, planted injections) or testing spotlighting defenses? → <a href="../lens/index.html">Lens</a>, the defensive bench.</div>
     </div>
   </div>
 
@@ -97,7 +80,7 @@
 <script>
 "use strict";
 /* ============================================================================
-   B9 · Codec — reversible encode/decode workbench + hidden-Unicode inspector.
+   B9 · Codec — reversible encode/decode workbench.
    Pure, local, offline. All functions on window.CODEC (so they're testable in
    Node). DOM wiring runs only when the page's elements exist.
    ============================================================================ */
@@ -150,38 +133,7 @@ var CODEC={
 };
 var CODEC_ORDER=["base64","hex","binary","url","rot13","caesar","atbash","reverse","morse","nato","leet"];
 
-/* ---------- hidden-Unicode inspector (defensive) ---------- */
-var HOMO_MAP={ "а":"a","е":"e","о":"o","с":"c","р":"p","х":"x","у":"y","і":"i","ј":"j","ѕ":"s","А":"A","В":"B","С":"C","Е":"E","Н":"H","К":"K","М":"M","О":"O","Р":"P","Т":"T","Х":"X" };
-function cp(ch){ var c=ch.codePointAt(0); return "U+"+c.toString(16).toUpperCase().padStart(4,"0"); }
-function classify(ch){
-  var c=ch.codePointAt(0);
-  if(c===0x200B||c===0x200C||c===0x200D||c===0x2060||c===0xFEFF) return "zero-width";
-  if(c>=0x202A&&c<=0x202E) return "bidi override";
-  if(c>=0x2066&&c<=0x2069) return "bidi isolate";
-  if(c>=0xE0000&&c<=0xE007F) return "Unicode Tags";
-  if(c>=0xE000&&c<=0xF8FF) return "private use area";
-  if(c>=0xFE00&&c<=0xFE0F) return "variation selector";
-  if(c>=0x1D400&&c<=0x1D7FF) return "math alphanumeric";
-  if(HOMO_MAP[ch]) return "homoglyph (Cyrillic)";
-  return null;
-}
-function scan(text){
-  var hits=[], arr=Array.from(text||"");
-  for(var i=0;i<arr.length;i++){ var cat=classify(arr[i]); if(cat) hits.push({index:i,char:arr[i],cp:cp(arr[i]),category:cat}); }
-  return hits;
-}
-function strip(text){
-  var out=Array.from(text||"").map(function(ch){
-    var cat=classify(ch);
-    if(cat==="homoglyph (Cyrillic)") return HOMO_MAP[ch];
-    if(cat==="zero-width"||cat==="bidi override"||cat==="bidi isolate"||cat==="Unicode Tags"||cat==="private use area"||cat==="variation selector") return "";
-    return ch;
-  }).join("");
-  try{ out=out.normalize("NFKC"); }catch(e){}
-  return out;
-}
-
-window.CODEC={codecs:CODEC,order:CODEC_ORDER,scan:scan,strip:strip,classify:classify};
+window.CODEC={codecs:CODEC,order:CODEC_ORDER};  /* hidden-Unicode inspection lives in Lens now */
 
 /* ---------- self-test (round-trip reversible codecs) ---------- */
 function selfTest(){
@@ -235,21 +187,6 @@ $("selftest").onclick=function(){
   var html='<span class="'+(fail.length?"bad":"ok")+'">'+pass+" reversible codecs round-trip OK"+(skip?", "+skip+" lossy skipped":"")+(fail.length?", "+fail.length+" FAILED: "+fail.map(function(x){return x.k;}).join(", "):"")+"</span>";
   $("selftestOut").innerHTML=html;
 };
-
-/* inspector */
-function renderScan(){
-  var hits=scan($("insIn").value);
-  $("scanSummary").innerHTML = hits.length ? '<span class="bad">'+hits.length+" suspicious char"+(hits.length>1?"s":"")+" found</span>" : '<span class="ok">clean — no hidden/confusable characters</span>';
-  var box=$("scanOut");
-  if(!hits.length){ box.style.display="none"; return; }
-  box.style.display="block";
-  box.innerHTML=hits.slice(0,500).map(function(h){
-    return '<div class="row"><span class="cp">'+h.cp+'</span><span class="cat">'+h.category+'</span><span>@'+h.index+'</span><span class="ch">'+(h.category.indexOf("homoglyph")===0?h.char:"·")+'</span></div>';
-  }).join("");
-}
-$("scanBtn").onclick=renderScan;
-$("stripBtn").onclick=function(){ renderScan(); $("insOut").value=strip($("insIn").value); toast("stripped + normalized"); };
-$("copyClean").onclick=function(){ copy($("insOut").value); };
 
 /* theme toggle */
 (function(){ var KEY="b9.hub.theme"; try{ var t=localStorage.getItem(KEY); if(t) document.documentElement.setAttribute("data-theme",t); }catch(e){}

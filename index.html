@@ -72,7 +72,7 @@
         <h1>B9<span class="dot">.</span></h1>
         <div class="tag">AI red-teaming Swiss knife <span class="caret">_</span></div>
         <div class="stats">
-          <span class="s"><b>9</b> tools</span>
+          <span class="s"><b>10</b> tools</span>
           <span class="s">offline · <b>file://</b></span>
           <span class="s">local-only</span>
           <span class="s">manual-submission by design</span>
@@ -122,9 +122,16 @@
 
       <a class="card tool" href="tools/codec/index.html" data-icon="codec">
         <div class="thead"><span class="ico"></span><div class="tmeta"><span class="num">CODEC</span><h2>Codec</h2><div class="scheme">▸ CODEC://bench</div></div></div>
-        <p>Reversible encode/decode workbench — Base64, hex, binary, URL, ROT13, Caesar, Atbash, reverse, Morse, NATO, leet — with a round-trip self-test. Plus a defensive hidden-Unicode inspector to detect &amp; strip zero-width / bidi / Tags / homoglyph carriers.</p>
-        <div class="chips"><span class="chip cyan">11 codecs</span><span class="chip violet">self-test</span><span class="chip amber">unicode inspector</span></div>
+        <p>Reversible encode/decode workbench — Base64, hex, binary, URL, ROT13, Caesar, Atbash, reverse, Morse, NATO, leet — with a round-trip self-test. Encode the ask, decode the reply.</p>
+        <div class="chips"><span class="chip cyan">11 codecs</span><span class="chip violet">reversible</span><span class="chip amber">self-test</span></div>
         <span class="open">Open Codec →</span>
+      </a>
+
+      <a class="card tool" href="tools/lens/index.html" data-icon="lens">
+        <div class="thead"><span class="ico"></span><div class="tmeta"><span class="num">LENS</span><h2>Lens</h2><div class="scheme">▸ LENS://defense</div></div></div>
+        <p>Defensive bench. Inspect untrusted text for <b>hidden Unicode</b>, scan model output for <b>XSS / exfil sinks</b>, detect <b>planted injections</b> (XPIA-style), and apply <b>spotlighting</b> defenses — all offline, nothing sent.</p>
+        <div class="chips"><span class="chip cyan">unicode</span><span class="chip violet">sinks / XSS</span><span class="chip amber">spotlight</span></div>
+        <span class="open">Open Lens →</span>
       </a>
 
       <a class="card tool" href="tools/sieve/index.html" data-icon="sieve">
@@ -160,7 +167,7 @@
       <b>Scope.</b> B9 helps craft and bookkeep variations of text <b>you</b> write, for authorized testing on Gray Swan Arena. It never contacts any website, never auto-submits, and never guesses model identities (Arena Rules 3 &amp; 4). Every tool works opened straight from <code>file://</code> with the network unplugged; all data stays in your browser's local storage.
     </div>
     <div class="note" style="margin-top:8px">
-      <b>Shared system.</b> Every tool shares one theme (<code>shared/theme.css</code>). The attempt-trackers (Facet, Salvo) run on one engine (<code>shared/core.js</code>) — identical variant queue, stats, export and keyboard loop (<kbd>c</kbd> copy, <kbd>1</kbd>–<kbd>4</kbd>/<kbd>0</kbd> log, <kbd>u</kbd> undo, <kbd>j</kbd>/<kbd>k</kbd> move). The workbench tools (Recon, Codec, Sieve, Dossier) share lightweight plumbing (<code>shared/kit.js</code>). Dossier imports a Salvo/Facet JSON export, so the loop ends in a finished write-up.
+      <b>Shared system.</b> Every tool shares one theme (<code>shared/theme.css</code>). The attempt-trackers (Facet, Salvo) run on one engine (<code>shared/core.js</code>) — identical variant queue, stats, export and keyboard loop (<kbd>c</kbd> copy, <kbd>1</kbd>–<kbd>4</kbd>/<kbd>0</kbd> log, <kbd>u</kbd> undo, <kbd>j</kbd>/<kbd>k</kbd> move). The workbench tools (Recon, Codec, Lens, Sieve, Dossier) share lightweight plumbing (<code>shared/kit.js</code>). Dossier imports a Salvo/Facet JSON export, so the loop ends in a finished write-up.
     </div>
   </div>
 

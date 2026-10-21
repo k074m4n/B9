@@ -169,6 +169,7 @@ function ls(key){ try{ return JSON.parse(global.localStorage.getItem(key)); }cat
   const D=window.DOSSIER;
   ok("Dossier: LLM07 classification + gate warn", /AML.T0051.000/.test(D.buildReport({bugClass:"llm07",gates:{}})) && /unchecked/.test(D.buildReport({gates:{}})));
   ok("Dossier: all gates -> submission-ready", /submission-ready/.test(D.buildReport({gates:{scope:1,repro:1,current:1,rootcause:1,reachable:1,impact:1,ready:1}})));
+  ok("Dossier: full OWASP LLM top-10 classes + disclosure note", /Sensitive Information Disclosure/.test(D.buildReport({bugClass:"llm02"})) && /Unbounded Consumption/.test(D.buildReport({bugClass:"llm10"})) && /Disclosure note/.test(D.buildReport({bugClass:"llm08"})));
   const sum=D.importSummary({activeProjectId:"p",projects:[{id:"p",scenario:"s",model:"M",basePayload:"b",variants:[{tags:["case"],attempts:[{result:"success"},{result:"fail"}]}]}]});
   ok("Dossier: importSummary totals + table", /Total attempts: 2/.test(sum.summary) && /case \| 2 \| 1 \| 50%/.test(sum.summary));
   let dThrew=false; try{ D.importSummary({}); }catch(e){ dThrew=true; } ok("Dossier: bad import throws", dThrew);
@@ -214,6 +215,8 @@ function ls(key){ try{ return JSON.parse(global.localStorage.getItem(key)); }cat
   const CL=window.CLIMB;
   ok("Climb: empty -> turn-1 entry suggestion", /Turn 1/.test(CL.status([]).suggest) && CL.status([]).depth===0);
   ok("Climb: refusal poisons context + depth counts non-pending", CL.status([{outcome:"refused"}]).poisoned===true && CL.status([{outcome:"advanced"},{outcome:"pending"},{outcome:"refused"}]).depth===2);
+  ok("Climb: many-shot parses 'q :: a' lines", (function(){var s=CL.parseShots("a :: b\nlone\n\nc::d");return s.length===3 && s[0].q==="a" && s[0].a==="b" && s[1].a==="" && s[2].q==="c";})());
+  ok("Climb: many-shot counts shots, estimates tokens, flags budget", (function(){var m=CL.manyShot([{q:"x",a:"y"}],{contextTokens:1000});return m.count===1 && m.estTokens>0 && m.fits===true && /scales with count/.test(m.suggest);})() && CL.manyShot([{q:"x".repeat(5000),a:""}],{contextTokens:100}).fits===false);
 
   console.log("\n==== RESULT: "+pass+" passed, "+fail+" failed ====\n");
   process.exit(fail?1:0);

@@ -5,7 +5,7 @@
 ![offline](https://img.shields.io/badge/offline-file%3A%2F%2F-2b7a4b?style=flat-square)
 ![dependencies](https://img.shields.io/badge/dependencies-0-555?style=flat-square)
 ![stack](https://img.shields.io/badge/stack-vanilla_JS-b23a3a?style=flat-square)
-![tests](https://img.shields.io/badge/tests-65_passing-2b7a4b?style=flat-square)
+![tests](https://img.shields.io/badge/tests-68_passing-2b7a4b?style=flat-square)
 ![tools](https://img.shields.io/badge/tools-11-7a4a8c?style=flat-square)
 
 ![B9 workflow](docs/overview.svg)
@@ -23,8 +23,8 @@ In one line: **the bookkeeping-and-methodology layer around manual red-teaming.*
 | ① | **Recon** | `RECON://scope` | Fingerprint the target's defense stack — identity, system prompt, guardrail topology, capabilities, obfuscation channels, and **agentic / indirect (XPIA) surfaces** (untrusted-data entry · auto-exec · exfil egress · canary) — and get a **live decision-tree opening move**. The recon worksheet, turned into a plan. |
 | ② | **Facet** | `FACET://lab` | Re-express your own benign payload along four neutral linguistic axes (verb/term · register · mood · abstraction) to **map which wording a model reacts to**. Transform-only; a neutral lexicon is the safety boundary. |
 | ③ | **Salvo** | `SALVO://variant-lab` | **Best-of-N.** Fire many small, *seeded* perturbations of a base payload (13 strategies — incl. prefix-opener & refusal-suppression) and track the per-variant hit rate to catch the low-probability success. |
-| ⇡ | **Climb** | `CLIMB://crescendo` | **Multi-turn — the strongest lever.** Plan a Crescendo escalation turn by turn (benign entry → anchor to the model's own words → the goal as a continuation), track what poisoned the context, and backtrack or branch. |
-| ④ | **Dossier** | `DOSSIER://report` | Turn logged attempts into a **submission-ready disclosure** (OWASP LLM07 / MITRE ATLAS): steps, impact, negative results, and the valid-finding gates checklist. Imports a Salvo/Facet export as evidence. |
+| ⇡ | **Climb** | `CLIMB://crescendo` | **Multi-turn — the strongest lever.** Plan a Crescendo escalation turn by turn (benign entry → anchor to the model's own words → the goal as a continuation), track what poisoned the context, and backtrack or branch. Includes a **many-shot priming** panel (stack your own benign demos, budget the context) that composes with the climb. |
+| ④ | **Dossier** | `DOSSIER://report` | Turn logged attempts into a **submission-ready disclosure** classified across the **full OWASP LLM Top-10 (2025) + MITRE ATLAS** with a per-class disclosure note: steps, impact, negative results, and the valid-finding gates checklist. Imports a Salvo/Facet export as evidence. |
 | ◇ | **Codec** | `CODEC://bench` | Reversible encode/decode bench (Base64, hex, binary, URL, ROT13, Caesar, Atbash, reverse, Morse, NATO, leet) with a round-trip self-test. Encode the ask, decode the reply. |
 | ◇ | **Lens** | `LENS://defense` | **Defensive bench.** Inspect untrusted text for **hidden Unicode** (zero-width / bidi / Tags-block / homoglyph), scan a model's output for **XSS & exfil sinks**, detect **planted injections** (XPIA), and apply **spotlighting** (delimit / datamark / encode) — the blue-team half of the kit. |
 | ◇ | **Sieve** | `SIEVE://oracle` | Client-side **oracle tracker** for authorized extraction of a benign lab secret: log closed-ended answers (boolean / range / code-point), reconstruct the value in a position table, and **stop the moment it validates**. |
@@ -72,7 +72,7 @@ Copy → paste into the Arena chat yourself → log the result → repeat. Pane 
 A dependency-free Node suite drives the real tools through a hand-rolled DOM — mount, generate, log, undo, persist, reload, export, import, keyboard loop, theme sync, and every workbench tool's pure logic:
 
 ```bash
-npm test     # → 65 checks, 0 deps
+npm test     # → 68 checks, 0 deps
 ```
 
 ---
@@ -96,7 +96,7 @@ B9/
 │  ├─ codec/   lens/       # workbench (kit.js)  — reversible codecs · defensive bench
 │  ├─ sieve/   atlas/      # workbench (kit.js)  — oracle tracker · methodology reference
 │  └─ ledger/  verdict/    # workbench (kit.js)  — campaign ASR · response scorer
-├─ test/                   # minidom.js + run.js — the 65-check suite
+├─ test/                   # minidom.js + run.js — the 68-check suite
 └─ .github/workflows/      # CI: npm test + the no-network assertion
 ```
 

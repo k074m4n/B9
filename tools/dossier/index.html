@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Dossier · B9</title>
-<meta name="description" content="Offline red-team disclosure report builder (OWASP LLM07 / MITRE ATLAS). Imports Salvo/Facet exports, generates a submission-ready finding. Local only.">
+<meta name="description" content="Offline red-team disclosure report builder (full OWASP LLM Top-10 2025 / MITRE ATLAS). Imports Salvo/Facet exports, generates a submission-ready finding. Local only.">
 <link rel="stylesheet" href="../../shared/theme.css">
 <script>try{var t=localStorage.getItem("b9.hub.theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
 <style>
@@ -46,7 +46,7 @@
       </div>
     </div>
   </div>
-  <div class="footer"><b>Dossier</b> · OWASP LLM07 / MITRE ATLAS disclosure builder · local only · authorized testing</div>
+  <div class="footer"><b>Dossier</b> · OWASP LLM Top-10 / MITRE ATLAS disclosure builder · local only · authorized testing</div>
   <div id="toast"></div>
   <div class="modal" id="modal"><div class="box" id="modalBox"></div></div>
 </div>
@@ -58,13 +58,21 @@
 (function(){
 var K=window.B9KIT, esc=K.esc, pct=K.pct;
 
+/* OWASP LLM Top-10 (2025) + agentic/indirect specializations. `atlas` IDs are the
+   suggested MITRE ATLAS mapping — confirm against the current matrix before you submit. */
 var BUGCLASS={
-  llm07:{name:"OWASP LLM07:2025 System Prompt Leakage", atlas:"MITRE ATLAS AML.T0051.000 (LLM Prompt Injection: Direct)"},
-  llm01:{name:"OWASP LLM01:2025 Prompt Injection", atlas:"MITRE ATLAS AML.T0051"},
-  llm05:{name:"OWASP LLM05:2025 Improper Output Handling", atlas:"MITRE ATLAS AML.T0057"},
-  llm06:{name:"OWASP LLM06:2025 Excessive Agency", atlas:"OWASP ASI06 · MITRE ATLAS AML.T0053"},
-  asi:{name:"OWASP Top 10 for Agentic Apps — goal hijack / tool misuse", atlas:"OWASP ASI01–ASI10"},
-  indirect:{name:"OWASP LLM01 (Indirect) — instruction/data conflation", atlas:"MITRE ATLAS AML.T0051.001 (Indirect)"}
+  llm01:{name:"OWASP LLM01:2025 Prompt Injection", atlas:"MITRE ATLAS AML.T0051 (LLM Prompt Injection)", tip:"Show the exact injected text and the instruction it overrode; separate the attacker-controlled bytes from the model's own prompt."},
+  llm02:{name:"OWASP LLM02:2025 Sensitive Information Disclosure", atlas:"MITRE ATLAS AML.T0057 (LLM Data Leakage)", tip:"Quote the leaked value verbatim and state how you confirmed it is real (not hallucinated); redact it in the public report."},
+  llm03:{name:"OWASP LLM03:2025 Supply Chain", atlas:"MITRE ATLAS AML.T0010 (ML Supply Chain Compromise)", tip:"Name the vulnerable component (model, adapter, dataset, plugin) and the provenance gap that let it in."},
+  llm04:{name:"OWASP LLM04:2025 Data and Model Poisoning", atlas:"MITRE ATLAS AML.T0020 (Poison Training Data)", tip:"Show the trigger→behavior link and that it survives a clean session; distinguish poisoning from a one-off jailbreak."},
+  llm05:{name:"OWASP LLM05:2025 Improper Output Handling", atlas:"MITRE ATLAS AML.T0057 (downstream execution of model output)", tip:"Demonstrate the sink firing (rendered image/link, executed code) — use Lens to confirm the output actually reaches an executor."},
+  llm06:{name:"OWASP LLM06:2025 Excessive Agency", atlas:"OWASP ASI06 · MITRE ATLAS AML.T0053 (LLM Plugin Compromise)", tip:"Show a real tool call triggered by untrusted input, and that the agent's permission exceeded the task's need."},
+  llm07:{name:"OWASP LLM07:2025 System Prompt Leakage", atlas:"MITRE ATLAS AML.T0051.000 (LLM Prompt Injection: Direct)", tip:"Attach the extracted system-prompt text and the request that surfaced it; note any secret/credential it contained."},
+  llm08:{name:"OWASP LLM08:2025 Vector and Embedding Weaknesses", atlas:"MITRE ATLAS AML.T0051.001 (Indirect) · RAG retrieval poisoning", tip:"Show the planted document, that retrieval surfaced it, and that the model acted on it as instruction."},
+  llm09:{name:"OWASP LLM09:2025 Misinformation", atlas:"MITRE ATLAS AML.T0048 (External Harms)", tip:"Show the confidently-wrong output and the real-world action it could mislead; over-reliance is part of the impact."},
+  llm10:{name:"OWASP LLM10:2025 Unbounded Consumption", atlas:"MITRE ATLAS AML.T0034 (Cost Harvesting)", tip:"Quantify the amplification (tokens/calls/$ per request) and the trigger an unprivileged user can repeat."},
+  asi:{name:"OWASP Top 10 for Agentic Apps — goal hijack / tool misuse", atlas:"OWASP ASI01–ASI10", tip:"Map the step where the agent's goal was hijacked and the tool/permission it abused to act on it."},
+  indirect:{name:"OWASP LLM01 (Indirect) — instruction/data conflation", atlas:"MITRE ATLAS AML.T0051.001 (Indirect)", tip:"Prove the model could not tell data from instruction: show the untrusted channel and the spotlighting that was missing (see Lens)."}
 };
 var GATES=[
   {k:"scope",label:"scope-confirmed (in-scope engagement / lab / your own system)"},
@@ -84,6 +92,7 @@ function buildReport(d){
   md+="Model: "+(d.model||"—")+" (anonymized — identity not probed)\n";
   md+="Date: "+new Date().toISOString().slice(0,10)+"\n\n";
   md+="**Bug class:** "+cls.name+"  \n**Classification:** "+cls.atlas+"\n\n";
+  if(cls.tip) md+="> _Disclosure note — "+cls.tip+"_\n\n";
   md+="## Root cause\n\n"+(d.rootCause||"—")+"\n\n";
   md+="## Steps to reproduce\n\n";
   var steps=(d.steps||[]).filter(function(s){ return (s.action||s.req||s.resp); });

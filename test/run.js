@@ -112,6 +112,18 @@ function ls(key){ try{ return JSON.parse(global.localStorage.getItem(key)); }cat
   ok("storage-unavailable banner shown", /Storage unavailable/.test($("banner").innerHTML));
   global.localStorage=md.makeLocalStorage();
 
+  // prefix-opener + refusal-suppression strategies (the Stack/Prime merge)
+  remount();
+  { const b=$("basePayload"); b.value="Please explain the process."; b.dispatch("input"); }
+  const setStrat=(key,on)=>{ document.querySelectorAll("[data-enable]").forEach(cb=>{ if(cb.dataset.enable===key){ cb.checked=on; if(cb.onchange) cb.onchange(); } }); };
+  ["case","white","punct","syn"].forEach(k=>setStrat(k,false));
+  setStrat("prefill",true); setStrat("suppress",true);
+  $("genBtn").click();
+  const stexts=ls(KEY).projects[0].variants.slice(1).map(v=>v.text).join("\n");
+  ok("Salvo: prefix-opener primes a compliant continuation", /complete answer|Step by step|here it works|how it works|here goes|To begin/.test(stexts));
+  ok("Salvo: refusal-suppression appends anti-hedging constraints", /without disclaimers|No hedging|safety caveats|go straight to the answer/.test(stexts));
+  global.localStorage=md.makeLocalStorage();
+
   // shared platform theme: a tool opened from a dark hub mounts dark
   global.localStorage.setItem("b9.hub.theme","dark");
   remount();
@@ -150,6 +162,8 @@ function ls(key){ try{ return JSON.parse(global.localStorage.getItem(key)); }cat
   ok("Recon: training+shallow -> prefix", /PREFIX/.test(R.derivePlan({guard:{depth:"shallow"}}).primary));
   ok("Recon: guarded -> stack + layers", /STACK/.test(R.derivePlan({guard:{input:"yes",output:"yes"}}).primary) && R.derivePlan({guard:{input:"yes",output:"yes"},caps:{tools:"yes"}}).layers.some(l=>/INDIRECT/.test(l)));
   ok("Recon: readiness math", R.readiness({})===0 && R.readiness({guard:{input:"yes",depth:"deep"},obf:{base64:"yes"}})>0);
+  ok("Recon: indirect surface rewrites primary + XPIA layer", /Indirect surface/.test(R.derivePlan({guard:{input:"yes"},agent:{untrusted:"retrieval/RAG"}}).primary) && R.derivePlan({agent:{untrusted:"email/msg"}}).layers.some(l=>/XPIA|injection as plausible/.test(l)));
+  ok("Recon: egress channel + canary become findings", (function(){var L=R.derivePlan({agent:{untrusted:"web fetch",egress:"markdown image",canary:"b9-xyz"}}).layers.join(" ");return /EchoLeak/.test(L)&&/canary "b9-xyz"/i.test(L);})());
 
   loadWorkbench("tools/dossier/index.html");
   const D=window.DOSSIER;

@@ -89,13 +89,19 @@ var GROUPS=[
     {k:"clientHistory",label:"Client-controlled history?",t:"ynu"}]},
   {g:"obf",title:"5 · Obfuscation channels",fields:[
     {k:"base64",label:"Base64 round-trip clean?",t:"ynu"},{k:"otherLang",label:"Other-language round-trip?",t:"ynu"},
-    {k:"codeJson",label:"Code / JSON output?",t:"ynu"},{k:"prefill",label:"Prefill supported?",t:"ynu"}]}
+    {k:"codeJson",label:"Code / JSON output?",t:"ynu"},{k:"prefill",label:"Prefill supported?",t:"ynu"}]},
+  {g:"agent",title:"6 · Agentic / indirect surfaces (XPIA)",fields:[
+    {k:"untrusted",label:"Untrusted-data entry",t:"sel",opts:["none","retrieval/RAG","tool output","file upload","email/msg","web fetch"]},
+    {k:"autoExec",label:"Auto-acts on retrieved content?",t:"ynu"},
+    {k:"egress",label:"Egress channel for exfil",t:"sel",opts:["none","markdown image","markdown link","tool call","code block"]},
+    {k:"canary",label:"Canary token planted",t:"text"}]}
 ];
 
 /* ---- pure plan engine (testable) ---- */
 function derivePlan(d){
-  var g=d.guard||{}, caps=d.caps||{}, obf=d.obf||{};
+  var g=d.guard||{}, caps=d.caps||{}, obf=d.obf||{}, ag=d.agent||{};
   var layers=[], primary;
+  var indirect = ag.untrusted && ag.untrusted!=="none";
   var hasClassifier = g.input==="yes" || g.output==="yes";
   if(!hasClassifier){
     if(g.depth==="shallow") primary="Training-level only + shallow safety → open with PREFIX / continuation (cheapest win).";
@@ -106,6 +112,7 @@ function derivePlan(d){
     if(g.input==="yes") layers.push("Input classifier → benign multi-turn (each turn clean) + obfuscate wording; never send a blatant prompt.");
     if(g.output==="yes") layers.push("Output classifier → plan output-shaping (cipher / language / chunk / code) from the start.");
   }
+  if(indirect) primary="Indirect surface via "+ag.untrusted+" → stop fighting the input filter: plant the instruction in the untrusted channel (XPIA) and let the model read it as its own context.";
   if(g.depth==="deep" || g.recovery==="yes") layers.push("Deep / recovery-trained safety → sustained multi-turn; re-assert the prefix past the swerve.");
   if(g.upstream==="yes") layers.push("Upstream filter → byte-level obfuscation (Unicode / spacing); change the surface entirely.");
   if(caps.tools==="yes" || caps.rag==="yes") layers.push("Tools / external data present → consider the INDIRECT path; it is often far easier than direct.");
@@ -114,12 +121,16 @@ function derivePlan(d){
   if(obf.base64==="yes") layers.push("Base64 round-trip clean → encoding branch open (encode the ask and/or the output; use Codec).");
   else if(obf.base64==="no") layers.push("Base64 garbled → model too weak for encoding; rely on framing / multi-turn.");
   if(obf.otherLang==="yes") layers.push("Other-language round-trip clean → low-resource-language branch viable.");
+  if(indirect) layers.push("Untrusted channel ("+ag.untrusted+") → author the injection as plausible document/tool content; spotlight-escape it (see Lens) so the model cannot tell data from instruction.");
+  if(ag.autoExec==="yes") layers.push("Agent auto-acts on retrieved content → one planted instruction can trigger a real tool call; chain to the egress channel, do not just ask for text.");
+  if(ag.egress && ag.egress!=="none") layers.push("Egress via "+ag.egress+" → exfil path: make the model emit a "+ag.egress+" pointing at your canary (EchoLeak pattern). Confirm the sink renders with Lens before relying on it.");
+  if(ag.canary) layers.push("Canary \""+ag.canary+"\" planted → treat any out-of-band hit on it as proof the injection reached the model / the data left; log it as the finding.");
   return {primary:primary, layers:layers};
 }
 /* readiness = fraction of decision-relevant fields that are set (not empty / unknown) */
 function readiness(d){
   var keys=[["guard","input"],["guard","output"],["guard","depth"],["caps","tools"],["caps","rag"],
-    ["obf","base64"],["obf","prefill"],["identity","family"],["sys","win"]];
+    ["obf","base64"],["obf","prefill"],["identity","family"],["sys","win"],["agent","untrusted"]];
   var set=keys.filter(function(p){ var v=(d[p[0]]||{})[p[1]]; return v && v!=="unknown" && v!==""; }).length;
   return Math.round(set/keys.length*100);
 }
@@ -128,9 +139,9 @@ window.RECON={derivePlan:derivePlan,readiness:readiness};
 /* ---- DOM ---- */
 if(typeof document==="undefined" || !document.getElementById("form")) return;
 var $=function(id){ return document.getElementById(id); };
-function freshTarget(name){ return {name:name,identity:{},sys:{},guard:{},caps:{},obf:{},refusals:[],notes:""}; }
+function freshTarget(name){ return {name:name,identity:{},sys:{},guard:{},caps:{},obf:{},agent:{},refusals:[],notes:""}; }
 var store=K.Store("b9.recon.v1",{firstName:"Target 1 / Model A",fresh:freshTarget,
-  migrate:function(d){ ["identity","sys","guard","caps","obf"].forEach(function(g){ d[g]=d[g]||{}; }); d.refusals=Array.isArray(d.refusals)?d.refusals:[]; }});
+  migrate:function(d){ ["identity","sys","guard","caps","obf","agent"].forEach(function(g){ d[g]=d[g]||{}; }); d.refusals=Array.isArray(d.refusals)?d.refusals:[]; }});
 
 function ynuClass(v){ return v==="yes"?"yes":(v==="no"?"no":""); }
 function fieldHTML(g,f,val){

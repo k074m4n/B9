@@ -2,7 +2,7 @@
   "name": "b9",
   "version": "0.1.0",
   "private": true,
-  "description": "B9 — offline AI red-teaming toolkit (Salvo, Facet). Static, build-free.",
+  "description": "B9 — offline AI red-teaming Swiss knife — static, build-free, zero-dependency.",
   "scripts": {
     "test": "node test/run.js"
   }

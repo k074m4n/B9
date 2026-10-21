@@ -169,6 +169,14 @@ function ls(key){ try{ return JSON.parse(global.localStorage.getItem(key)); }cat
   ok("Codec: reversible codecs round-trip", cr.filter(x=>x.ok===false).length===0 && cr.filter(x=>x.ok===true).length>=10);
   ok("Codec: inspector detects + strips", CO.scan("aсcount​").length===2 && CO.strip("aсcount​")==="account");
 
+  loadWorkbench("tools/ledger/index.html");
+  const LG=window.LEDGER;
+  ok("Ledger: familyOf maps Salvo + Facet tags", LG.familyOf("case")==="Perturbation" && LG.familyOf("register:formal")==="Overt Carriers" && LG.familyOf("mood:x")==="Composition & Ordering" && LG.familyOf("approx")===null);
+  const lex=LG.flatten({projects:[{name:"S",variants:[{tags:["case"],attempts:[{result:"success"},{result:"fail"}]},{tags:["encode"],attempts:[{result:"refused"},{result:"refused"},{result:"refused"}]}]}]});
+  const lag=LG.aggregate(lex.concat(LG.flatten({projects:[{name:"F",variants:[{tags:["register:formal"],attempts:[{result:"success"}]}]}]})));
+  ok("Ledger: aggregate overall + family", lag.total===6 && lag.succ===2 && lag.byFamily.find(r=>r.k==="Perturbation").att===2);
+  ok("Ledger: rotation flags a closed class + honest LB", lag.rotate.some(r=>r.k==="encode"&&r.att===3) && lag.wilson<lag.rate);
+
   console.log("\n==== RESULT: "+pass+" passed, "+fail+" failed ====\n");
   process.exit(fail?1:0);
 })();

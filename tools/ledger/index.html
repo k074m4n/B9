@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ledger · B9</title>
+<meta name="description" content="Offline cross-tool campaign dashboard: import Salvo/Facet exports, aggregate ASR by MLCommons family and class, and surface which classes to rotate. Local only.">
+<link rel="stylesheet" href="../../shared/theme.css">
+<script>try{var t=localStorage.getItem("b9.hub.theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+<style>
+.wrap{max-width:1040px;margin:0 auto;padding:var(--gap);width:100%;display:grid;grid-template-columns:1fr 1.25fr;gap:var(--gap);align-items:start}
+@media (max-width:900px){.wrap{grid-template-columns:1fr}}
+.col{min-width:0;display:flex;flex-direction:column;gap:var(--gap)}
+.sess{display:flex;align-items:center;gap:8px;padding:7px 9px;border:1px solid var(--line);border-radius:var(--radius);margin-top:6px;background:var(--bg-2);font-size:var(--fs-sm)}
+.sess .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sess .mt{color:var(--fg-dim);font-family:var(--mono);font-size:var(--fs-xs);white-space:nowrap}
+.rotate{border:1px solid var(--r-refused);background:color-mix(in srgb,var(--r-refused) 8%,transparent);border-radius:var(--radius);padding:10px 12px}
+.rotate b{color:var(--r-refused)}
+tr.hot td{background:color-mix(in srgb,var(--r-refused) 10%,transparent)}
+.th-sort{cursor:pointer}
+.bonline{font-size:var(--fs-sm);color:var(--fg-dim);margin-top:8px}
+.bonline b{color:var(--fg-dim)}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="topbar">
+    <a class="home-link" href="../../index.html">B9</a>
+    <span class="brand hasico"><span id="brandIco"></span>LEDGER://campaign<span class="caret">_</span></span>
+    <select class="proj" id="sel" title="Campaign"></select>
+    <button class="btn sm" id="newBtn">+ New</button>
+    <button class="btn sm" id="renBtn" title="Rename / delete">⋯</button>
+    <span class="spacer"></span>
+    <span class="badge-offline">offline</span>
+    <button class="btn tb-btn" id="themeBtn" title="Toggle theme">◐</button>
+    <button class="btn tb-btn" id="importBtn" title="Import a Salvo/Facet JSON export">↑ import</button>
+    <button class="btn tb-btn" id="mdBtn">↓ MD</button>
+    <input type="file" id="impFile" accept="application/json,.json" multiple style="display:none">
+  </div>
+
+  <div class="wrap">
+    <div class="col">
+      <div class="card">
+        <h3 class="h-sec">Sessions</h3>
+        <div class="hint" style="margin-top:0">Import one or more <b>Salvo</b> / <b>Facet</b> JSON exports; Ledger merges every logged attempt into one campaign view.</div>
+        <button class="btn primary block" id="importBtn2" style="margin-top:8px">↑ Import Salvo / Facet export</button>
+        <div id="sessList"></div>
+      </div>
+      <div class="card">
+        <h3 class="h-sec">Rotate now</h3>
+        <div id="rotate"></div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="card">
+        <h3 class="h-sec">Campaign ASR</h3>
+        <div id="overall"></div>
+      </div>
+      <div class="card">
+        <h3 class="h-sec">By MLCommons family</h3>
+        <div id="famTable"></div>
+      </div>
+      <div class="card">
+        <h3 class="h-sec">By class / tag</h3>
+        <div id="tagTable"></div>
+      </div>
+    </div>
+  </div>
+  <div class="footer"><b>Ledger</b> · cross-tool campaign ASR · rotate class, not wording · local only · authorized testing</div>
+  <div id="toast"></div>
+  <div class="modal" id="modal"><div class="box" id="modalBox"></div></div>
+</div>
+
+<script src="../../shared/icons.js"></script>
+<script src="../../shared/kit.js"></script>
+<script>
+"use strict";
+(function(){
+var K=window.B9KIT, esc=K.esc, pct=K.pct;
+var RESULTS=["success","partial","refused","flagged","fail"];
+
+/* ---- pure: taxonomy + aggregation ---- */
+function familyOf(tag){
+  var F={case:"Perturbation",white:"Perturbation",punct:"Perturbation",syn:"Perturbation",verb:"Perturbation",
+    reorder:"Composition & Ordering",delim:"Composition & Ordering",template:"Composition & Ordering",
+    abstract:"Composition & Ordering",concrete:"Composition & Ordering",
+    polite:"Overt Carriers",persona:"Overt Carriers",homo:"Encoding Abuse",encode:"Encoding Abuse"};
+  if(F[tag]) return F[tag];
+  if(tag.indexOf("register:")===0) return "Overt Carriers";
+  if(tag.indexOf("mood:")===0) return "Composition & Ordering";
+  return null;
+}
+function flatten(exportObj){
+  var out=[];
+  if(!exportObj || !Array.isArray(exportObj.projects)) throw new Error("no projects[] in file");
+  exportObj.projects.forEach(function(p){
+    (p.variants||[]).forEach(function(v){
+      var tags=v.tags||v.strategies||v.axes||[];
+      (v.attempts||[]).forEach(function(a){ out.push({ts:a.ts||0,result:a.result,tags:tags,project:p.name||""}); });
+    });
+  });
+  return out;
+}
+function wilsonLB(s,n){ if(!n) return 0; var z=1.959964,ph=s/n,d=1+z*z/n; var c=(ph+z*z/(2*n))/d,m=z*Math.sqrt((ph*(1-ph)+z*z/(4*n))/n)/d; return Math.max(0,c-m); }
+function aggregate(attempts){
+  var counts={success:0,partial:0,refused:0,flagged:0,fail:0}, total=0;
+  var tag={}, fam={};
+  attempts.forEach(function(a){
+    total++; if(counts[a.result]!=null) counts[a.result]++;
+    var win=a.result==="success"?1:0, fams={};
+    (a.tags||[]).forEach(function(t){
+      tag[t]=tag[t]||{att:0,suc:0}; tag[t].att++; tag[t].suc+=win;
+      var f=familyOf(t); if(f) fams[f]=1;
+    });
+    Object.keys(fams).forEach(function(f){ fam[f]=fam[f]||{att:0,suc:0}; fam[f].att++; fam[f].suc+=win; });
+  });
+  function rows(m){ return Object.keys(m).map(function(k){ return {k:k,att:m[k].att,suc:m[k].suc,rate:m[k].att?m[k].suc/m[k].att:0}; })
+    .sort(function(a,b){ return b.rate-a.rate || b.att-a.att; }); }
+  var succ=counts.success, p=total?succ/total:0;
+  return {
+    total:total, counts:counts, succ:succ, rate:p,
+    wilson:wilsonLB(succ,total), bon:p>0?Math.max(1,Math.round(1/p)):null,
+    byTag:rows(tag), byFamily:rows(fam),
+    rotate:rows(tag).filter(function(r){ return r.att>=3 && r.suc===0; })
+  };
+}
+window.LEDGER={familyOf:familyOf,flatten:flatten,aggregate:aggregate,wilsonLB:wilsonLB};
+
+/* ---- DOM ---- */
+if(typeof document==="undefined" || !document.getElementById("sessList")) return;
+var $=function(id){ return document.getElementById(id); };
+var tagSort="rate";
+function fresh(name){ return {name:name,sessions:[]}; }
+var store=K.Store("b9.ledger.v1",{firstName:"Campaign 1",fresh:fresh,
+  migrate:function(d){ d.sessions=Array.isArray(d.sessions)?d.sessions:[]; }});
+
+function allAttempts(){ var out=[]; store.active().sessions.forEach(function(s){ out=out.concat(s.attempts||[]); }); return out; }
+
+function renderSessions(){
+  var d=store.active();
+  $("sessList").innerHTML = d.sessions.length ? d.sessions.map(function(s,i){
+    var a=s.attempts||[], suc=a.filter(function(x){return x.result==="success";}).length;
+    return '<div class="sess"><span class="nm">'+esc(s.label)+'</span><span class="mt">'+a.length+' att · '+pct(suc,a.length)+'%</span><button class="linkbtn" data-del="'+i+'">✕</button></div>';
+  }).join("") : '<div class="hint" style="margin-top:8px">No sessions imported yet.</div>';
+  Array.prototype.forEach.call(document.querySelectorAll("[data-del]"),function(b){ b.onclick=function(){ d.sessions.splice(+b.dataset.del,1); store.save(); renderAll(); }; });
+}
+function tile(n,l,c){ return '<div class="statbox"><div class="n"'+(c?' style="color:'+c+'"':'')+'>'+n+'</div><div class="l">'+l+'</div></div>'; }
+function renderOverall(){
+  var ag=aggregate(allAttempts());
+  if(!ag.total){ $("overall").innerHTML='<div class="empty">Import a session to see campaign ASR.</div>'; return; }
+  var bar=RESULTS.filter(function(r){return ag.counts[r]>0;}).map(function(r){ return '<span style="width:'+(ag.counts[r]/ag.total*100).toFixed(2)+'%;background:var(--r-'+r+');opacity:.85;margin-right:1px" title="'+r+': '+ag.counts[r]+'"></span>'; }).join("");
+  $("overall").innerHTML=
+    '<div class="stat-grid">'+tile(ag.total,"attempts")+tile(ag.succ,"successes","var(--r-success)")+tile(pct(ag.succ,ag.total)+"%","success rate")+tile(store.active().sessions.length,"sessions")+'</div>'+
+    '<div class="barwrap">'+(bar||'<span style="width:100%"></span>')+'</div>'+
+    '<div class="legend">'+RESULTS.map(function(r){ return '<span><i style="background:var(--r-'+r+')"></i>'+r+' '+ag.counts[r]+'</span>'; }).join("")+'</div>'+
+    '<div class="bonline">best-of-N: <b>'+(ag.bon?("~"+ag.bon+" attempts / success"):"no success yet")+'</b> · success rate 95% lower bound: <b>'+Math.round(ag.wilson*100)+'%</b></div>';
+}
+function tableHTML(rows,colLabel,withFamilyDot){
+  if(!rows.length) return '<div class="empty" style="padding:12px">No tagged attempts yet.</div>';
+  return '<table class="st"><thead><tr><th>'+colLabel+'</th><th class="num th-sort" data-sort="att">Att</th><th class="num th-sort" data-sort="suc">Succ</th><th class="num th-sort" data-sort="rate">Rate</th></tr></thead><tbody>'+
+    rows.map(function(r){ var hot=r.att>=3&&r.suc===0;
+      return '<tr class="'+(hot?"hot":"")+'"><td>'+esc(r.k)+(hot?' <span class="chip approx">rotate</span>':'')+'</td><td class="num">'+r.att+'</td><td class="num">'+r.suc+'</td><td class="num">'+Math.round(r.rate*100)+'%</td></tr>'; }).join("")+
+    '</tbody></table>';
+}
+function renderTables(){
+  var ag=aggregate(allAttempts());
+  $("famTable").innerHTML=tableHTML(ag.byFamily,"Family");
+  var tags=ag.byTag.slice().sort(function(a,b){ return tagSort==="att"?(b.att-a.att):tagSort==="suc"?(b.suc-a.suc):(b.rate-a.rate||b.att-a.att); });
+  $("tagTable").innerHTML=tableHTML(tags,"Class / tag");
+  Array.prototype.forEach.call(document.querySelectorAll("#tagTable [data-sort]"),function(th){ th.onclick=function(){ tagSort=th.dataset.sort; renderTables(); }; });
+  $("rotate").innerHTML = ag.rotate.length
+    ? '<div class="rotate"><b>'+ag.rotate.length+' class(es) closed</b> (≥3 attempts, 0 successes). Rotate the class, don\'t reword:<br>'+ag.rotate.map(function(r){ return '• <b>'+esc(r.k)+'</b> ('+r.att+'×)'; }).join('<br>')+'</div>'
+    : '<div class="hint" style="margin-top:0">No class has hit 3 refusals with 0 successes yet. Keep logging.</div>';
+}
+function renderAll(){ renderSessions(); renderOverall(); renderTables(); }
+
+/* import */
+function doImport(files){
+  var d=store.active(), pending=files.length, added=0;
+  Array.prototype.forEach.call(files,function(f){
+    var r=new FileReader();
+    r.onload=function(){ try{ var obj=JSON.parse(r.result); var att=flatten(obj);
+      d.sessions.push({id:K.uuid(),label:f.name.replace(/\.json$/i,""),attempts:att}); added++;
+    }catch(e){ K.toast("skip "+f.name+": "+(e.message||"bad JSON")); }
+    if(--pending===0){ store.save(); renderAll(); if(added) K.toast("imported "+added+" session"+(added>1?"s":"")); } };
+    r.onerror=function(){ if(--pending===0){ store.save(); renderAll(); } };
+    r.readAsText(f);
+  });
+}
+$("importBtn").onclick=function(){ $("impFile").click(); };
+$("importBtn2").onclick=function(){ $("impFile").click(); };
+$("impFile").onchange=function(e){ if(e.target.files.length) doImport(e.target.files); e.target.value=""; };
+
+function toMD(){
+  var d=store.active(), ag=aggregate(allAttempts());
+  var md="# Campaign ledger — "+d.name+"\n\nDate: "+new Date().toISOString().slice(0,10)+"\nSessions: "+d.sessions.map(function(s){return s.label;}).join(", ")+"\n\n";
+  md+="## ASR\n\n- Total attempts: "+ag.total+"\n- Successes: "+ag.succ+" (rate "+pct(ag.succ,ag.total)+"%)\n- 95% lower bound: "+Math.round(ag.wilson*100)+"%\n- best-of-N: "+(ag.bon?("~"+ag.bon+" attempts/success"):"no success yet")+"\n\n";
+  md+="## By MLCommons family\n\n| Family | Att | Succ | Rate |\n|---|---|---|---|\n"+(ag.byFamily.map(function(r){return "| "+r.k+" | "+r.att+" | "+r.suc+" | "+Math.round(r.rate*100)+"% |";}).join("\n")||"| — | 0 | 0 | 0% |")+"\n\n";
+  md+="## By class / tag\n\n| Class | Att | Succ | Rate |\n|---|---|---|---|\n"+(ag.byTag.map(function(r){return "| "+r.k+(r.att>=3&&r.suc===0?" (ROTATE)":"")+" | "+r.att+" | "+r.suc+" | "+Math.round(r.rate*100)+"% |";}).join("\n")||"| — | 0 | 0 | 0% |")+"\n\n";
+  if(ag.rotate.length) md+="## Rotate now\n\n"+ag.rotate.map(function(r){return "- "+r.k+" ("+r.att+" attempts, 0 successes)";}).join("\n")+"\n";
+  return md;
+}
+
+/* top bar */
+function renderSel(){ $("sel").innerHTML=store.all().map(function(d){ return '<option value="'+d.id+'" '+(d.id===store.activeId()?"selected":"")+'>'+esc(d.name)+'</option>'; }).join(""); }
+$("sel").onchange=function(){ store.setActive($("sel").value); renderAll(); };
+$("newBtn").onclick=function(){ store.add("Campaign "+(store.all().length+1)); renderSel(); renderAll(); };
+$("renBtn").onclick=function(){
+  var d=store.active();
+  $("modalBox").innerHTML='<h2>Campaign</h2><label class="fld">Name</label><input class="input" id="pn" value="'+esc(d.name)+'"><div class="actions"><button class="btn danger" id="del" style="margin-right:auto">Delete</button><button class="btn" id="cx">Cancel</button><button class="btn primary" id="sv">Save</button></div>';
+  $("modal").classList.add("show");
+  $("sv").onclick=function(){ store.rename(d.id,$("pn").value.trim()||d.name); $("modal").classList.remove("show"); renderSel(); };
+  $("cx").onclick=function(){ $("modal").classList.remove("show"); };
+  $("del").onclick=function(){ if(!store.remove(d.id)){ K.toast("Can't delete the only campaign"); return; } $("modal").classList.remove("show"); renderSel(); renderAll(); };
+};
+$("modal").addEventListener("click",function(e){ if(e.target===$("modal")) $("modal").classList.remove("show"); });
+$("mdBtn").onclick=function(){ K.download("ledger-"+(store.active().name.replace(/[^\w.-]+/g,"_").slice(0,40))+".md",toMD(),"text/markdown"); };
+
+K.initTheme("themeBtn");
+if(window.B9ICON){ var bi=$("brandIco"); if(bi) bi.innerHTML=B9ICON("ledger",{size:16}); B9ICON.setFavicon("ledger"); }
+renderSel(); renderAll();
+})();
+</script>
+</body>
+</html>

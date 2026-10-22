@@ -37,6 +37,7 @@
     <span class="brand hasico"><span id="brandIco"></span>RASTER://vision<span class="caret">_</span></span>
     <span class="spacer"></span>
     <span class="badge-offline">offline</span>
+    <button class="btn tb-btn" id="helpBtn" title="How to use" aria-label="How to use this tool">ⓘ</button>
     <button class="btn tb-btn" id="themeBtn" title="Toggle theme">◐</button>
   </div>
 
@@ -259,6 +260,7 @@ $("drop").ondragleave=function(){ $("drop").classList.remove("over"); };
 $("drop").ondrop=function(e){ e.preventDefault(); $("drop").classList.remove("over"); var f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0]; handleFile(f); };
 
 K.initTheme("themeBtn");
+K.helpButton("helpBtn","Raster — multimodal bench","<p class='lede'>Render your own benign text into an image carrier, or inspect an image for hidden-text injection. Canvas + bytes only.</p><h4>Carrier (text → image)</h4><ol><li>Type your benign payload / goal.</li><li>Pick a mode: <b>FigStep list</b> (blank numbered slots), plain, low-contrast (stego), or handwriting.</li><li><b>Render</b>, then <b>↓ PNG</b> to upload to a vision target yourself.</li></ol><h4>Inspect (image → hidden text)</h4><ol><li>Drop a PNG / JPEG — read in your browser only.</li><li>It flags carriers a multimodal pipeline might read as instructions: PNG <code>tEXt/zTXt/iTXt</code> chunks, JPEG <code>COM</code> comments, data appended after the end marker, and long embedded strings.</li></ol><h4>Tips</h4><ul><li>No OCR (that needs a networked/bundled engine) — this is the file-level injection surface.</li><li>Carriers use your own benign text only; it's a transform, like an encoding wrap.</li></ul>");
 if(window.B9ICON){ var bi=$("brandIco"); if(bi) bi.innerHTML=B9ICON("raster",{size:16}); B9ICON.setFavicon("raster"); }
 })();
 </script>

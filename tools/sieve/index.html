@@ -41,6 +41,7 @@
     <button class="btn sm" id="renBtn" title="Rename / delete">⋯</button>
     <span class="spacer"></span>
     <span class="badge-offline">offline</span>
+    <button class="btn tb-btn" id="helpBtn" title="How to use" aria-label="How to use this tool">ⓘ</button>
     <button class="btn tb-btn" id="themeBtn" title="Toggle theme">◐</button>
     <button class="btn tb-btn" id="mdBtn">↓ MD</button>
   </div>
@@ -179,6 +180,7 @@ $("modal").addEventListener("click",function(e){ if(e.target===$("modal")) $("mo
 $("mdBtn").onclick=function(){ K.download("sieve-"+(store.active().name.replace(/[^\w.-]+/g,"_").slice(0,40))+".md",toMD(),"text/markdown"); };
 
 K.initTheme("themeBtn");
+K.helpButton("helpBtn","Sieve — oracle tracker","<p class='lede'>Reconstruct a benign lab secret from closed-ended answers — an oracle side-channel, not a direct ask.</p><h4>Steps</h4><ol><li>Set the known or suspected <b>length</b> of the value.</li><li>Log each closed-ended answer you get — boolean, range, or code-point.</li><li>Watch the <b>position table</b> reconstruct the value cell by cell.</li><li><b>Stop the moment it validates</b> — you've proven the extraction.</li></ol><h4>Tips</h4><ul><li>Closed-ended questions (\"is character 3 a digit?\") leak less and are far harder for a model to refuse than \"tell me the secret\".</li><li>For authorized testing of a lab/CTF secret only.</li></ul>");
 if(window.B9ICON){ var bi=document.getElementById("brandIco"); if(bi) bi.innerHTML=B9ICON("sieve",{size:16}); B9ICON.setFavicon("sieve"); }
 renderSel(); bindHeader(); renderAll();
 })();

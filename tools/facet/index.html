@@ -396,6 +396,7 @@ function refreshAbstract(host,p,api){
 B9.mountTool({
   id:"facet", icon:"facet", storeKey:"b9.facet.v1", legacyStoreKey:"reframeLab.v1",
   brand:{scheme:"FACET",path:"lab"}, title:"Facet \u00b7 B9",
+  guide:"<h2>Facet \u2014 linguistic boundary lab</h2><p class='lede'>Re-express one benign payload along neutral axes to find which wording a model reacts to.</p><h4>Steps</h4><ol><li>Write your <b>base payload</b> in Pane A.</li><li>Pick the <b>axes</b> to vary: verb/term, register, mood, abstraction.</li><li><b>Generate</b>, then run the loop: <kbd>c</kbd> copy \u2192 target \u2192 <kbd>1</kbd>\u2013<kbd>4</kbd>/<kbd>0</kbd> log. <kbd>u</kbd> undo, <kbd>j</kbd>/<kbd>k</kbd> move.</li><li>The boundary map (Pane C) shows which axis moved the needle \u2014 word-level vs. intent-level.</li></ol><h4>Tips</h4><ul><li><b>Transform-only, by design:</b> Facet re-expresses the text you type and never changes the semantic-core noun \u2014 a neutral lexicon is the safety boundary.</li><li>Use it to decide whether the target refuses on <i>wording</i> or on <i>intent</i>, then take the winning framing to <code>Salvo</code>.</li></ul>",
   paneATab:"Base &amp; Axes", paneATitle:"Base &amp; Axes", paneANoun:"axes",
   bannerText:"Recon tool: find the model's word-level vs. intent-level boundary on your OWN benign payload. It only re-expresses text you type \u2014 it cannot add substance.",
   footerText:"transforms your own benign text \u00b7 no network \u00b7 submit manually per Arena rules",

@@ -5,7 +5,7 @@
 ![offline](https://img.shields.io/badge/offline-file%3A%2F%2F-2b7a4b?style=flat-square)
 ![dependencies](https://img.shields.io/badge/dependencies-0-555?style=flat-square)
 ![stack](https://img.shields.io/badge/stack-vanilla_JS-b23a3a?style=flat-square)
-![tests](https://img.shields.io/badge/tests-78_passing-2b7a4b?style=flat-square)
+![tests](https://img.shields.io/badge/tests-79_passing-2b7a4b?style=flat-square)
 ![tools](https://img.shields.io/badge/tools-13-7a4a8c?style=flat-square)
 
 ![B9 workflow](docs/overview.svg)
@@ -69,6 +69,8 @@ Pick a tool, write a base payload, hit **Generate**, then run the keyboard loop 
 
 Copy → paste into the Arena chat yourself → log the result → repeat. Pane C updates live with the success rate, the per-strategy / per-family (MLCommons) breakdown, and a best-of-N estimate.
 
+Every tool carries an **ⓘ button** in its top bar with a built-in, tool-specific "how to use" — steps, tips, and the doctrine behind it — so you never need to leave the page.
+
 ---
 
 ## Testing
@@ -76,7 +78,7 @@ Copy → paste into the Arena chat yourself → log the result → repeat. Pane 
 A dependency-free Node suite drives the real tools through a hand-rolled DOM — mount, generate, log, undo, persist, reload, export, import, keyboard loop, theme sync, and every workbench tool's pure logic:
 
 ```bash
-npm test     # → 78 checks, 0 deps
+npm test     # → 79 checks, 0 deps
 ```
 
 ---
@@ -101,7 +103,7 @@ B9/
 │  ├─ sieve/   atlas/      # workbench (kit.js)  — oracle tracker · methodology reference
 │  ├─ ledger/  verdict/    # workbench (kit.js)  — campaign ASR · response scorer
 │  └─ raster/              # workbench (kit.js)  — multimodal carrier + image inspector
-├─ test/                   # minidom.js + run.js — the 78-check suite
+├─ test/                   # minidom.js + run.js — the 79-check suite
 └─ .github/workflows/      # CI: npm test + the no-network assertion
 ```
 

@@ -44,6 +44,7 @@
     <button class="btn sm" id="renBtn" title="Rename / delete">⋯</button>
     <span class="spacer"></span>
     <span class="badge-offline">offline</span>
+    <button class="btn tb-btn" id="helpBtn" title="How to use" aria-label="How to use this tool">ⓘ</button>
     <button class="btn tb-btn" id="themeBtn" title="Toggle theme">◐</button>
     <button class="btn tb-btn" id="tmplBtn" title="Seed a Crescendo skeleton">＋ template</button>
     <button class="btn tb-btn" id="mdBtn">↓ MD</button>
@@ -231,6 +232,7 @@ $("modal").addEventListener("click",function(e){ if(e.target===$("modal")) $("mo
 $("mdBtn").onclick=function(){ K.download("climb-"+(store.active().name.replace(/[^\w.-]+/g,"_").slice(0,40))+".md",toMD(),"text/markdown"); };
 
 K.initTheme("themeBtn");
+K.helpButton("helpBtn","Climb — multi-turn Crescendo","<p class='lede'>Plan a multi-turn escalation so the model never gets a clean refuse-moment.</p><h4>Steps</h4><ol><li>Set the benign <b>domain entry</b> and the benign <b>goal</b>.</li><li>Seed the Crescendo template, or add turns by hand.</li><li>Mark each turn's outcome: advanced / hesitated / refused.</li><li>Follow the <b>Next move</b> panel; it adapts to the last outcome.</li><li>Optional: the <b>many-shot priming</b> panel — stack your own benign demos (<code>q :: a</code>), budget the context; composes with the climb.</li></ol><h4>Tips</h4><ul><li>A refusal <b>poisons the context</b> — branch or reset; never re-issue the blunt ask.</li><li>Anchor each step to the model's own previous words — make the goal the obvious next sentence.</li></ul>");
 if(window.B9ICON){ var bi=$("brandIco"); if(bi) bi.innerHTML=B9ICON("climb",{size:16}); B9ICON.setFavicon("climb"); }
 renderSel(); renderHead(); renderTurns(); renderStatus(); renderMany();
 })();

@@ -76,5 +76,30 @@ function initTheme(btnId){
     document.documentElement.setAttribute("data-theme",c); try{ localStorage.setItem(KEY,c); }catch(e){} };
 }
 
-window.B9KIT={uuid:uuid,now:now,clamp:clamp,pct:pct,esc:esc,getJSON:getJSON,setJSON:setJSON,Store:Store,toast:toast,copy:copy,download:download,initTheme:initTheme};
+/* ---- help overlay: self-contained, accessible (Esc / backdrop close, focus restore) ---- */
+function escHelp(e){ if(e.key==="Escape"||e.keyCode===27){ e.stopPropagation(); hideHelp(); } }
+function hideHelp(){
+  var m=document.getElementById("b9help"); if(!m) return;
+  m.classList.remove("show"); document.removeEventListener("keydown",escHelp,true);
+  try{ if(m._prev && m._prev.focus) m._prev.focus(); }catch(e){}
+}
+function help(title,bodyHTML){
+  var m=document.getElementById("b9help");
+  if(!m){
+    m=document.createElement("div"); m.id="b9help"; m.className="modal";
+    m.setAttribute("role","dialog"); m.setAttribute("aria-modal","true");
+    m.innerHTML='<div class="box help-box"><div class="help-body"></div>'+
+      '<div class="actions"><button class="btn primary" type="button" data-close>Close</button></div></div>';
+    document.body.appendChild(m);
+    m.addEventListener("click",function(e){ if(e.target===m || (e.target.getAttribute && e.target.getAttribute("data-close")!=null)) hideHelp(); });
+  }
+  m.setAttribute("aria-label",(title||"Help")+" — how to use");
+  m.querySelector(".help-body").innerHTML='<h2>'+esc(title||"How to use")+'</h2>'+(bodyHTML||"");
+  m._prev=document.activeElement; m.classList.add("show");
+  var c=m.querySelector("[data-close]"); try{ if(c&&c.focus) c.focus(); }catch(e){}
+  document.addEventListener("keydown",escHelp,true);
+}
+function helpButton(btnId,title,bodyHTML){ var b=document.getElementById(btnId); if(!b) return; b.setAttribute("aria-haspopup","dialog"); b.onclick=function(){ help(title,bodyHTML); }; }
+
+window.B9KIT={uuid:uuid,now:now,clamp:clamp,pct:pct,esc:esc,getJSON:getJSON,setJSON:setJSON,Store:Store,toast:toast,copy:copy,download:download,initTheme:initTheme,help:help,hideHelp:hideHelp,helpButton:helpButton};
 })();

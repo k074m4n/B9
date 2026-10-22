@@ -297,6 +297,16 @@ kbd{font-family:var(--font);font-size:var(--fs-xs);background:var(--bg-2);border
   border-bottom-width:2px;border-radius:var(--radius-sm);padding:1px 6px;color:var(--accent);display:inline-block;min-width:16px;text-align:center}
 .khelp{display:grid;grid-template-columns:auto 1fr;gap:8px 12px;align-items:center;font-size:var(--fs-sm)}
 .modal .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
+/* help overlay content */
+.modal .box.help-box{max-width:660px}
+.help-body h2{margin:0 0 10px}
+.help-body h4{margin:14px 0 4px;font-size:var(--fs-sm);color:var(--accent);letter-spacing:.3px;text-transform:uppercase}
+.help-body p{font-size:var(--fs-sm);line-height:1.6;color:var(--fg-dim);margin:8px 0}
+.help-body ol,.help-body ul{margin:6px 0;padding-left:20px}
+.help-body li{font-size:var(--fs-sm);line-height:1.55;color:var(--fg);margin:5px 0}
+.help-body b{color:var(--fg)}
+.help-body code{font-family:var(--mono);font-size:.92em;background:var(--bg-2);border:1px solid var(--line-soft);padding:1px 5px;border-radius:var(--radius-sm)}
+.help-body .lede{color:var(--fg);border-left:2px solid var(--accent);padding-left:10px}
 
 /* ===================== MOTION ===================== */
 @keyframes stamp{0%{background:var(--accent-soft);border-left-color:var(--accent)}100%{}}

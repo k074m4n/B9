@@ -205,6 +205,7 @@ function mountTool(spec){
       '<button class="btn sm" id="renameProjBtn" title="Rename / delete project">⋯</button>'+
       '<span class="spacer"></span>'+
       '<span class="badge-offline" title="This tool never makes a network request.">offline</span>'+
+      '<button class="btn tb-btn" id="infoBtn" title="How to use" aria-label="How to use this tool">ⓘ</button>'+
       '<button class="btn tb-btn" id="helpBtn" title="Keyboard shortcuts">?</button>'+
       '<button class="btn tb-btn" id="themeBtn" title="Toggle theme">◐</button>'+
       '<button class="btn tb-btn" id="exportMdBtn" title="Export Markdown report">↓ MD</button>'+
@@ -677,6 +678,11 @@ function mountTool(spec){
       '<div class="actions"><button class="btn primary" id="helpClose">Got it</button></div>');
     setTimeout(function(){ var b=$("helpClose"); if(b) b.onclick=closeModal; },20);
   }
+  function showGuide(){
+    if(!spec.guide){ showHelp(); return; }
+    openModal('<div class="help-body">'+spec.guide+'</div><div class="actions"><button class="btn primary" id="guideClose">Close</button></div>');
+    setTimeout(function(){ var b=$("guideClose"); if(b) b.onclick=closeModal; },20);
+  }
   function renderProjectSelect(){
     els.projSelect.innerHTML=state.projects.map(function(p){
       return '<option value="'+p.id+'" '+(p.id===state.activeProjectId?"selected":"")+'>'+esc(p.name)+'</option>'; }).join("");
@@ -716,6 +722,7 @@ function mountTool(spec){
     $("renameProjBtn").onclick=doRenameProject;
     $("themeBtn").onclick=toggleTheme;
     $("helpBtn").onclick=showHelp;
+    if($("infoBtn")) $("infoBtn").onclick=showGuide;
     $("exportMdBtn").onclick=exportMarkdown;
     $("exportJsonBtn").onclick=exportJSON;
     $("importBtn").onclick=function(){ $("importFile").click(); };

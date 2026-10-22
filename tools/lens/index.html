@@ -37,6 +37,7 @@
     <span class="brand hasico"><span id="brandIco"></span>LENS://defense<span class="caret">_</span></span>
     <span class="spacer"></span>
     <span class="badge-offline">offline</span>
+    <button class="btn tb-btn" id="helpBtn" title="How to use" aria-label="How to use this tool">ⓘ</button>
     <button class="btn tb-btn" id="themeBtn" title="Toggle theme">◐</button>
   </div>
 
@@ -203,6 +204,7 @@ Array.prototype.forEach.call($("spMode").querySelectorAll("button"),function(b){
 $("spRun").onclick=function(){ var o=spotlight(val(),spMode); $("spOut").value=o; K.copy(o); };
 
 K.initTheme("themeBtn");
+K.helpButton("helpBtn","Lens — defensive bench","<p class='lede'>Inspect untrusted text and model output — the blue-team half of the kit. Nothing is sent.</p><h4>Tabs</h4><ol><li><b>Hidden Unicode</b> — scan for and strip zero-width, bidi, Tags-block, variation-selector, and homoglyph carriers.</li><li><b>Output sinks</b> — flag what a browser/markdown renderer would auto-execute or auto-fetch from a reply (XSS &amp; zero-click exfil).</li><li><b>Injection scan</b> — detect planted-instruction (indirect / XPIA) patterns in untrusted data.</li><li><b>Spotlight</b> — delimit / datamark / encode untrusted data so a model can't mistake it for instructions.</li></ol><h4>Tips</h4><ul><li>Paste a doc, tool output, an email, or a model reply — then inspect.</li><li>Use Spotlight to harden your <i>own</i> prompts; pair with <code>Raster</code> for image carriers.</li></ul>");
 if(window.B9ICON){ var bi=$("brandIco"); if(bi) bi.innerHTML=B9ICON("lens",{size:16}); B9ICON.setFavicon("lens"); }
 })();
 </script>

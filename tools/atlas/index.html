@@ -40,6 +40,7 @@ mark{background:var(--accent);color:var(--bg);border-radius:2px;padding:0 1px}
     <span class="brand hasico"><span id="brandIco"></span>ATLAS://method<span class="caret">_</span></span>
     <span class="spacer"></span>
     <span class="badge-offline">offline</span>
+    <button class="btn tb-btn" id="helpBtn" title="How to use" aria-label="How to use this tool">ⓘ</button>
     <button class="btn tb-btn" id="themeBtn" title="Toggle theme">◐</button>
   </div>
 
@@ -199,6 +200,7 @@ $("q").addEventListener("input",function(){ state.q=$("q").value; render(); });
 renderCats(); render();
 
 K.initTheme("themeBtn");
+K.helpButton("helpBtn","Atlas — methodology map","<p class='lede'>The doctrine behind the kit — taxonomies, techniques, defenses, and doctrine, each linked to the tool that applies it.</p><h4>Steps</h4><ol><li><b>Search</b> by keyword (crescendo, injection, output, rotate…) — it matches names, bodies, and tags.</li><li>Filter by category: Taxonomy · Technique · Defense · Doctrine.</li><li>Open the linked B9 tool from an entry to apply it.</li></ol><h4>Tips</h4><ul><li>A reference, not a payload library — entries are abstract methodology, nothing operational.</li><li>Use it to decide which family to rotate to when a class is exhausted.</li></ul>");
 if(window.B9ICON){ var bi=$("brandIco"); if(bi) bi.innerHTML=B9ICON("atlas",{size:16}); B9ICON.setFavicon("atlas"); }
 })();
 </script>

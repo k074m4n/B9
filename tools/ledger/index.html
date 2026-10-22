@@ -32,6 +32,7 @@ tr.hot td{background:color-mix(in srgb,var(--r-refused) 10%,transparent)}
     <button class="btn sm" id="renBtn" title="Rename / delete">⋯</button>
     <span class="spacer"></span>
     <span class="badge-offline">offline</span>
+    <button class="btn tb-btn" id="helpBtn" title="How to use" aria-label="How to use this tool">ⓘ</button>
     <button class="btn tb-btn" id="themeBtn" title="Toggle theme">◐</button>
     <button class="btn tb-btn" id="importBtn" title="Import a Salvo/Facet JSON export">↑ import</button>
     <button class="btn tb-btn" id="mdBtn">↓ MD</button>
@@ -218,6 +219,7 @@ $("modal").addEventListener("click",function(e){ if(e.target===$("modal")) $("mo
 $("mdBtn").onclick=function(){ K.download("ledger-"+(store.active().name.replace(/[^\w.-]+/g,"_").slice(0,40))+".md",toMD(),"text/markdown"); };
 
 K.initTheme("themeBtn");
+K.helpButton("helpBtn","Ledger — campaign dashboard","<p class='lede'>Aggregate attack success across tools and targets into one honest campaign view.</p><h4>Steps</h4><ol><li>Import one or more <code>Salvo</code>/<code>Facet</code> JSON exports.</li><li>Read ASR broken down by <b>MLCommons family</b> and class.</li><li>Check the 95% <b>Wilson lower bound</b> and the best-of-N estimate.</li><li>Act on the <b>\"3 refusals → rotate the class\"</b> signal.</li></ol><h4>Tips</h4><ul><li>The Wilson lower bound is the honest number to report, not the raw rate — small samples lie.</li><li>A closed class (attempts but zero successes) is the cue to switch families, not to re-roll.</li></ul>");
 if(window.B9ICON){ var bi=$("brandIco"); if(bi) bi.innerHTML=B9ICON("ledger",{size:16}); B9ICON.setFavicon("ledger"); }
 renderSel(); renderAll();
 })();

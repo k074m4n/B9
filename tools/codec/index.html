@@ -35,6 +35,7 @@
     <span class="brand hasico"><span id="brandIco"></span>CODEC://bench<span class="caret">_</span></span>
     <span class="spacer"></span>
     <span class="badge-offline" title="This tool never makes a network request.">offline</span>
+    <button class="btn tb-btn" id="helpBtn" title="How to use" aria-label="How to use this tool">ⓘ</button>
     <button class="btn tb-btn" id="themeBtn" title="Toggle theme">◐</button>
   </div>
 
@@ -77,6 +78,7 @@
 </div>
 
 <script src="../../shared/icons.js"></script>
+<script src="../../shared/kit.js"></script>
 <script>
 "use strict";
 /* ============================================================================
@@ -192,6 +194,7 @@ $("selftest").onclick=function(){
 (function(){ var KEY="b9.hub.theme"; try{ var t=localStorage.getItem(KEY); if(t) document.documentElement.setAttribute("data-theme",t); }catch(e){}
   $("themeBtn").onclick=function(){ var c=document.documentElement.getAttribute("data-theme")==="dark"?"light":"dark"; document.documentElement.setAttribute("data-theme",c); try{ localStorage.setItem(KEY,c); }catch(e){} }; })();
 if(window.B9ICON){ var bic=document.getElementById("brandIco"); if(bic) bic.innerHTML=B9ICON("codec",{size:16}); B9ICON.setFavicon("codec"); }
+if(window.B9KIT) B9KIT.helpButton("helpBtn","Codec — encode/decode bench","<p class='lede'>A reversible codec workbench — encode the ask, decode the reply.</p><h4>Steps</h4><ol><li>Type or paste text.</li><li>Pick a codec: Base64, hex, binary, URL, ROT13, Caesar, Atbash, reverse, Morse, NATO, leet.</li><li><b>Encode</b> or <b>Decode</b>; chain outputs to stack transforms.</li><li>Run the <b>self-test</b> to confirm every reversible codec round-trips.</li></ol><h4>Tips</h4><ul><li><code>Recon</code> tells you whether the target round-trips an encoding cleanly — that's when the encoding branch is open.</li><li>Hidden-Unicode inspection moved to <code>Lens</code>.</li></ul>");
 })();
 </script>
 </body>

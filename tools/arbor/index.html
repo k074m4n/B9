@@ -46,6 +46,7 @@
     <button class="btn sm" id="renBtn" title="Rename / delete">⋯</button>
     <span class="spacer"></span>
     <span class="badge-offline" id="offBadge">offline</span>
+    <button class="btn tb-btn" id="helpBtn" title="How to use" aria-label="How to use this tool">ⓘ</button>
     <button class="btn tb-btn" id="themeBtn" title="Toggle theme">◐</button>
     <button class="btn tb-btn" id="mdBtn" title="Export the tree as Markdown">↓ MD</button>
   </div>
@@ -301,6 +302,7 @@ $("mdBtn").onclick=function(){ K.download("arbor-"+(store.active().name.replace(
 
 renderSel(); renderHead(); renderTree();
 K.initTheme("themeBtn");
+K.helpButton("helpBtn","Arbor — tree of attacks (TAP)","<p class='lede'>Branch, judge, and prune a search tree so the best path surfaces under a budget.</p><h4>Steps</h4><ol><li>Set the goal, then <b>Seed root from goal</b>.</li><li>Add <b>child branches</b> — each a different angle on the same benign goal.</li><li>Run each branch on the target, paste the reply, and set a <b>0–100 judge score</b>.</li><li><b>✂ Prune losers</b> (drops off-topic + keeps the top-width leaves), then <b>▸ Next move</b> jumps to the best expandable leaf.</li><li>Export the winning path to <code>Dossier</code>.</li></ol><h4>Budget (TAP)</h4><ul><li><b>width</b> = how many leaves to keep per round · <b>depth</b> = max tree depth · <b>solve</b> = score that marks a branch solved · <b>floor</b> = below this = off-topic, pruned.</li></ul><h4>Localhost adapter (optional)</h4><ul><li>Off by default. When enabled it talks only to <code>127.0.0.1</code> (e.g. Ollama) to auto-run the <b>target</b> and <b>judge</b> — you still author each branch. Setup: allow the page origin (<code>OLLAMA_ORIGINS=*</code>) or serve B9 over <code>http://localhost</code>. Nothing reaches the internet.</li></ul>");
 if(window.B9ICON){ var bi=$("brandIco"); if(bi) bi.innerHTML=B9ICON("arbor",{size:16}); B9ICON.setFavicon("arbor"); }
 })();
 </script>

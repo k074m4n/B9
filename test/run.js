@@ -155,6 +155,7 @@ function ls(key){ try{ return JSON.parse(global.localStorage.getItem(key)); }cat
   console.log("\n==== WORKBENCH (kit.js tools) ====");
   require(path.join(ROOT,"shared/kit.js"));          // window.B9KIT
   ok("kit.js Store + esc", typeof window.B9KIT.Store==="function" && window.B9KIT.esc("<a>")==="&lt;a&gt;");
+  ok("kit.js help API present", typeof window.B9KIT.help==="function" && typeof window.B9KIT.helpButton==="function" && typeof window.B9KIT.hideHelp==="function");
   function loadWorkbench(file){ md.makeDocument(); global.document=md.doc; eval(inlineScript(file)); } // getElementById(...)=>null => DOM wiring skipped
 
   loadWorkbench("tools/recon/index.html");

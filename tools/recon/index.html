@@ -39,6 +39,7 @@ select.ynu{width:auto}
     <button class="btn sm" id="renBtn" title="Rename / delete">⋯</button>
     <span class="spacer"></span>
     <span class="badge-offline">offline</span>
+    <button class="btn tb-btn" id="helpBtn" title="How to use" aria-label="How to use this tool">ⓘ</button>
     <button class="btn tb-btn" id="themeBtn" title="Toggle theme">◐</button>
     <button class="btn tb-btn" id="mdBtn" title="Export worksheet + plan as Markdown">↓ MD</button>
     <button class="btn tb-btn" id="jsonBtn" title="Export all targets as JSON">↓ JSON</button>
@@ -224,6 +225,7 @@ $("impFile").onchange=function(e){ var f=e.target.files[0]; if(!f) return; var r
   r.readAsText(f); e.target.value=""; };
 
 K.initTheme("themeBtn");
+K.helpButton("helpBtn","Recon — target fingerprint","<p class='lede'>Fingerprint the target before you fire a single payload — the worksheet turns into a live opening move.</p><h4>Steps</h4><ol><li>Fill the five groups as you probe: identity, system prompt, <b>guardrails</b>, capabilities, obfuscation channels, and the <b>agentic / indirect (XPIA)</b> group.</li><li>Record each refusal signature → the counter you'll try.</li><li>Read the <b>opening move</b> and layer list — they update live as you type.</li><li>Export MD to seed a <code>Dossier</code> report.</li></ol><h4>Tips</h4><ul><li>The guardrail + agentic groups carry the most signal — fill them first.</li><li>Setting an untrusted-data entry rewrites the plan toward the indirect channel (plant the instruction, don't fight the input filter).</li><li>Readiness % = how much decision-relevant information you've captured.</li></ul>");
 if(window.B9ICON){ var bi=document.getElementById("brandIco"); if(bi) bi.innerHTML=B9ICON("recon",{size:16}); B9ICON.setFavicon("recon"); }
 renderSel(); renderForm();
 })();

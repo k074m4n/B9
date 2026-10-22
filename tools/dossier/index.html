@@ -30,6 +30,7 @@
     <button class="btn sm" id="renBtn" title="Rename / delete">⋯</button>
     <span class="spacer"></span>
     <span class="badge-offline">offline</span>
+    <button class="btn tb-btn" id="helpBtn" title="How to use" aria-label="How to use this tool">ⓘ</button>
     <button class="btn tb-btn" id="themeBtn" title="Toggle theme">◐</button>
     <button class="btn tb-btn" id="importEvidence" title="Import a Salvo/Facet JSON export as evidence">↑ evidence</button>
     <button class="btn tb-btn" id="copyBtn">⧉ copy</button>
@@ -213,6 +214,7 @@ $("evFile").onchange=function(e){ var f=e.target.files[0]; if(!f) return; var r=
   r.readAsText(f); e.target.value=""; };
 
 K.initTheme("themeBtn");
+K.helpButton("helpBtn","Dossier — disclosure builder","<p class='lede'>Turn logged attempts into a submission-ready disclosure.</p><h4>Steps</h4><ol><li>Pick the <b>bug class</b> (full OWASP LLM Top-10 2025) — read the per-class disclosure note it shows.</li><li>Import a <code>Salvo</code>/<code>Facet</code> JSON export to attach the evidence table.</li><li>Fill steps (exact request + verbatim response), root cause, impact, and <b>negative results</b>.</li><li>Tick the valid-finding gates — one unchecked gate blocks submission.</li><li>Copy or export the Markdown report.</li></ol><h4>Tips</h4><ul><li>Negative results (what was refused, what finally worked) are what make a finding credible.</li><li>The suggested MITRE ATLAS ID is a starting point — confirm it against the current matrix.</li></ul>");
 if(window.B9ICON){ var bi=document.getElementById("brandIco"); if(bi) bi.innerHTML=B9ICON("dossier",{size:16}); B9ICON.setFavicon("dossier"); }
 renderSel(); renderForm();
 })();

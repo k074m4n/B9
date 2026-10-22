@@ -300,6 +300,7 @@ function refreshSlots(host,p,api){
 B9.mountTool({
   id:"salvo", icon:"salvo", storeKey:"b9.salvo.v1", legacyStoreKey:"salvo.v1",
   brand:{scheme:"SALVO",path:"variant-lab"}, title:"Salvo · B9",
+  guide:"<h2>Salvo — Best-of-N variant lab</h2><p class='lede'>Fire many small, seeded perturbations of one base payload and track which lands.</p><h4>Steps</h4><ol><li>Write your <b>base payload</b> in Pane A.</li><li>Toggle the <b>strategies</b> to vary (⚙ opens each one's parameters).</li><li><b>Generate</b> — variant <b>#1 is the untouched control</b>; the rest are tagged perturbations.</li><li>Run the keyboard loop: <kbd>c</kbd> copy → paste into the target → <kbd>1</kbd>–<kbd>4</kbd>/<kbd>0</kbd> log → repeat. <kbd>u</kbd> undo, <kbd>j</kbd>/<kbd>k</kbd> move.</li><li>Pane C shows the hit rate, the per-strategy / per-MLCommons-family breakdown, and a best-of-N estimate.</li></ol><h4>Tips</h4><ul><li>Same <code>(base + strategies + seed)</code> always reproduces the identical batch.</li><li><b>Prefix-opener</b> and <b>refusal-suppression</b> are off by default — enable them to stack structural pressure.</li><li>Export JSON to feed <code>Ledger</code> / <code>Dossier</code>.</li></ul>",
   paneATab:"Base &amp; Strategy", paneATitle:"Base &amp; Strategy", paneANoun:"strategies",
   footerText:"no data leaves this page · submit manually per Arena rules",
   groupTableTitle:"Success rate by strategy", groupColLabel:"Strategy",

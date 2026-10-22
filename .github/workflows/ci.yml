@@ -16,12 +16,24 @@ jobs:
           node-version: '20'
       - name: Run B9 test suite (no deps)
         run: npm test
-      - name: Assert no network calls in shipped files
+      - name: Assert no internet access in shipped files
         run: |
-          if grep -rnE "fetch\(|XMLHttpRequest|WebSocket|cdn\.|unpkg|jsdelivr|googleapis" \
-               --include=*.html --include=*.js --include=*.css . \
-             | grep -vE "data:image/svg|/test/|w3.org"; then
-            echo "Network reference found in shipped files"; exit 1
-          else
-            echo "No network references — offline invariant holds"
+          # 1) No external host may appear anywhere (localhost + SVG/doc namespaces allowed).
+          if grep -rnoE "https?://[a-zA-Z0-9._-]+" --include=*.html --include=*.js --include=*.css . \
+               | grep -vE "(^|[.])/?test/" \
+               | grep -vE "https?://(127\.0\.0\.1|localhost)([:/]|$)" \
+               | grep -vE "https?://(www\.)?w3\.org"; then
+            echo "External host reference found — breaks the offline invariant"; exit 1
           fi
+          # 2) No implicit network primitives (CDN, fetch, WebSocket, Google fonts/APIs).
+          if grep -rnE "fetch\(|WebSocket|cdn\.|unpkg|jsdelivr|googleapis" \
+               --include=*.html --include=*.js --include=*.css . \
+             | grep -vE "data:image/svg|(^|[.])/?test/|w3.org"; then
+            echo "Disallowed network primitive found"; exit 1
+          fi
+          # 3) XMLHttpRequest is permitted ONLY in the isolated, opt-in localhost adapter (Arbor).
+          if grep -rlE "XMLHttpRequest" --include=*.html --include=*.js . \
+             | grep -vE "tools/arbor/index.html|(^|[.])/?test/"; then
+            echo "XMLHttpRequest outside the Arbor localhost adapter"; exit 1
+          fi
+          echo "No internet access — offline invariant holds (localhost adapter is opt-in, 127.0.0.1 only)"

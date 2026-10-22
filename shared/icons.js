@@ -29,6 +29,10 @@ var P={
   lens:'<circle cx="10.5" cy="10.5" r="6.5"/><path d="M15 15l5 5"/><path d="M10.5 7.5l2.5 1.2v2c0 1.8-1.1 3-2.5 3.6-1.4-.6-2.5-1.8-2.5-3.6v-2z"/>',
   /* Atlas — an open playbook / reference */
   atlas:'<path d="M12 6c-2-1.3-4.5-1.3-7-0.5V18c2.5-.8 5-.8 7 .5 2-1.3 4.5-1.3 7-.5V5.5c-2.5-.8-5-.8-7 .5z"/><path d="M12 6v12.5"/>',
+  /* Arbor — a tree of attacks: a root branching to pruned/kept nodes */
+  arbor:'<circle cx="12" cy="4.5" r="1.8"/><circle cx="6" cy="13" r="1.8"/><circle cx="18" cy="13" r="1.8"/><circle cx="18" cy="20" r="1.8"/><path d="M12 6.3L7 11.2"/><path d="M12 6.3l5 4.9"/><path d="M18 14.8v3.4"/><path d="M4.3 18.7l3.4-3.4"/>',
+  /* Raster — an image frame with a pixel grid and a hidden mark */
+  raster:'<rect x="3.5" y="4.5" width="17" height="15" rx="1.5"/><path d="M9 4.5v15"/><path d="M14.5 4.5v15"/><path d="M3.5 9.5h17"/><path d="M3.5 14.5h17"/><circle cx="17.2" cy="17" r="1.1" fill="currentColor" stroke="none"/>',
   /* B9 — platform mark */
   b9:'<path d="M12 2.4l8.3 4.8v9.6L12 21.6 3.7 16.8V7.2z"/><circle cx="12" cy="12" r="2.4"/>'
 };

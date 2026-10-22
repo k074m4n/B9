@@ -36,6 +36,7 @@ tr.hot td{background:color-mix(in srgb,var(--r-refused) 10%,transparent)}
     <button class="btn tb-btn" id="themeBtn" title="Toggle theme">◐</button>
     <button class="btn tb-btn" id="importBtn" title="Import a Salvo/Facet JSON export">↑ import</button>
     <button class="btn tb-btn" id="mdBtn">↓ MD</button>
+    <button class="btn tb-btn" id="csvBtn" title="Export the aggregate tables as CSV">↓ CSV</button>
     <input type="file" id="impFile" accept="application/json,.json" multiple style="display:none">
   </div>
 
@@ -202,6 +203,15 @@ function toMD(){
   if(ag.rotate.length) md+="## Rotate now\n\n"+ag.rotate.map(function(r){return "- "+r.k+" ("+r.att+" attempts, 0 successes)";}).join("\n")+"\n";
   return md;
 }
+function toCSV(){
+  var ag=aggregate(allAttempts());
+  function cell(s){ return '"'+String(s==null?"":s).replace(/"/g,'""')+'"'; }
+  var lines=["scope,key,attempts,successes,rate,rotate"];
+  lines.push(["overall","(all)",ag.total,ag.succ,pct(ag.succ,ag.total)+"%",""].map(cell).join(","));
+  ag.byFamily.forEach(function(r){ lines.push(["family",r.k,r.att,r.suc,Math.round(r.rate*100)+"%",""].map(cell).join(",")); });
+  ag.byTag.forEach(function(r){ lines.push(["class",r.k,r.att,r.suc,Math.round(r.rate*100)+"%",(r.att>=3&&r.suc===0?"ROTATE":"")].map(cell).join(",")); });
+  return lines.join("\r\n");
+}
 
 /* top bar */
 function renderSel(){ $("sel").innerHTML=store.all().map(function(d){ return '<option value="'+d.id+'" '+(d.id===store.activeId()?"selected":"")+'>'+esc(d.name)+'</option>'; }).join(""); }
@@ -217,6 +227,7 @@ $("renBtn").onclick=function(){
 };
 $("modal").addEventListener("click",function(e){ if(e.target===$("modal")) $("modal").classList.remove("show"); });
 $("mdBtn").onclick=function(){ K.download("ledger-"+(store.active().name.replace(/[^\w.-]+/g,"_").slice(0,40))+".md",toMD(),"text/markdown"); };
+$("csvBtn").onclick=function(){ K.download("ledger-"+(store.active().name.replace(/[^\w.-]+/g,"_").slice(0,40))+".csv",toCSV(),"text/csv"); };
 
 K.initTheme("themeBtn");
 K.helpButton("helpBtn","Ledger — campaign dashboard","<p class='lede'>Aggregate attack success across tools and targets into one honest campaign view.</p><h4>Steps</h4><ol><li>Import one or more <code>Salvo</code>/<code>Facet</code> JSON exports.</li><li>Read ASR broken down by <b>MLCommons family</b> and class.</li><li>Check the 95% <b>Wilson lower bound</b> and the best-of-N estimate.</li><li>Act on the <b>\"3 refusals → rotate the class\"</b> signal.</li></ol><h4>Tips</h4><ul><li>The Wilson lower bound is the honest number to report, not the raw rate — small samples lie.</li><li>A closed class (attempts but zero successes) is the cue to switch families, not to re-roll.</li></ul>");

@@ -209,6 +209,7 @@ function mountTool(spec){
       '<button class="btn tb-btn" id="helpBtn" title="Keyboard shortcuts">?</button>'+
       '<button class="btn tb-btn" id="themeBtn" title="Toggle theme">◐</button>'+
       '<button class="btn tb-btn" id="exportMdBtn" title="Export Markdown report">↓ MD</button>'+
+      '<button class="btn tb-btn" id="exportCsvBtn" title="Export per-variant table as CSV">↓ CSV</button>'+
       '<button class="btn tb-btn" id="exportJsonBtn" title="Export all as JSON">↓ JSON</button>'+
       '<button class="btn tb-btn" id="importBtn" title="Import JSON">↑ JSON</button>'+
       '<input type="file" id="importFile" accept="application/json,.json" style="display:none">'+
@@ -231,7 +232,7 @@ function mountTool(spec){
     '</div>'+
     '<div class="footer"><b>Offline tool</b> · '+esc(spec.footerText||"no data leaves this page · submit manually per Arena rules")+'</div>'+
     '<div id="toast"></div>'+
-    '<div class="modal" id="modal"><div class="box" id="modalBox"></div></div>';
+    '<div class="modal" id="modal" role="dialog" aria-modal="true" aria-label="Dialog"><div class="box" id="modalBox"></div></div>';
 
   var $=function(id){ return document.getElementById(id); };
   var els={
@@ -578,6 +579,19 @@ function mountTool(spec){
   }
   function slug(s){ return (s||"project").replace(/[^\w.-]+/g,"_").slice(0,50); }
   function exportJSON(){ commitFields(); download(spec.id+"-export.json",JSON.stringify(state,null,2),"application/json"); toast("Exported JSON"); }
+  function csvCell(s){ return '"'+String(s==null?"":s).replace(/"/g,'""')+'"'; }
+  function exportCSV(){ commitFields(); var p=activeProject(); if(!p) return;
+    var head=["variant","tags","text","attempts","success","partial","refused","flagged","fail","success_rate"];
+    var lines=[head.join(",")];
+    (p.variants||[]).forEach(function(v,i){
+      var c={success:0,partial:0,refused:0,flagged:0,fail:0}; var at=v.attempts||[];
+      at.forEach(function(a){ if(c[a.result]!=null) c[a.result]++; });
+      var n=at.length;
+      lines.push([ i+1, (v.tags&&v.tags.length?v.tags.join(" "):"control"), (v.text||"").replace(/\r?\n/g," "),
+        n, c.success, c.partial, c.refused, c.flagged, c.fail, (n?Math.round(c.success/n*100):0)+"%" ].map(csvCell).join(","));
+    });
+    download(spec.id+"-variants-"+slug(p.name)+".csv", lines.join("\r\n"), "text/csv"); toast("Exported CSV");
+  }
 
   function buildMarkdown(p){
     var all=collectAttempts(p);
@@ -724,6 +738,7 @@ function mountTool(spec){
     $("helpBtn").onclick=showHelp;
     if($("infoBtn")) $("infoBtn").onclick=showGuide;
     $("exportMdBtn").onclick=exportMarkdown;
+    if($("exportCsvBtn")) $("exportCsvBtn").onclick=exportCSV;
     $("exportJsonBtn").onclick=exportJSON;
     $("importBtn").onclick=function(){ $("importFile").click(); };
     $("importFile").onchange=function(e){ if(e.target.files[0]) doImport(e.target.files[0]); e.target.value=""; };

@@ -83,6 +83,8 @@ function ls(key){ try{ return JSON.parse(global.localStorage.getItem(key)); }cat
   $("exportJsonBtn").click();
   let jsonOK=false; try{ jsonOK=Array.isArray(JSON.parse(global.__lastBlob).projects); }catch(e){}
   ok("export JSON valid", jsonOK);
+  $("exportCsvBtn").click();
+  ok("export CSV per-variant header + control row", /variant,tags,text,attempts,success/.test(global.__lastBlob) && /"control"/.test(global.__lastBlob));
   $("exportMdBtn").click();
   ok("export MD report header", /# Arena red-team report/.test(global.__lastBlob));
   ok("export MD has MLCommons family section", /by MLCommons family/i.test(global.__lastBlob));
